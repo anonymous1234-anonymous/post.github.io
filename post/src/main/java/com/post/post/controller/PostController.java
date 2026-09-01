@@ -1,5 +1,7 @@
 package com.post.post.controller;
 
+import com.post.common.page.PageRequest;
+import com.post.common.page.PageResponse;
 import com.post.post.dto.PostDto;
 import com.post.post.service.PostService;
 import org.springframework.stereotype.Controller;
@@ -10,6 +12,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.io.IOException;
+
+
+// 2. 서비스 호출하여 PageResponse 가져오기 (목록 + 페이징 계산 한 번에 처리)
+// List<PostDto> 조회할 데이터 가져오기 10개씩 페이지
+// limit, pagePerCounts - current PageId 1,2,3,4
+// offset - currentPageId * limit 1*10 = 10
+// offset > (currentPageId -1 ) * limit = 0 -> limit 갯수
+// 2-1*10 = 10
+// 실제 조회 list 8개, totalcount = 98개 --> currentPageId 10page, limit 10pg
+
+
 
 @Controller
 public class PostController {
@@ -28,20 +41,16 @@ public class PostController {
             @RequestParam(defaultValue = "1") int page,
             Model model
     ) {
-        int size = 9;
-        int totalCount = postService.countAll(keyword);
-        int totalPages = (int) Math.ceil((double) totalCount / size);
+        PageRequest pageRequest = new PageRequest();
+        pageRequest.setPage(page);
+        pageRequest.setSize(9);
 
-        if (page < 1) page = 1;
-        if (totalPages > 0 && page > totalPages) page = totalPages;
+        PageResponse pageResponse = postService.getPostPage(pageRequest, sort, keyword);
 
-        int offset = Math.max(0, (page - 1) * size);
-
-        model.addAttribute("posts", postService.findPage(sort, keyword, offset, size));
+        model.addAttribute("posts", pageResponse.getList()); // 실제 게시글 리스트
+        model.addAttribute("paging", pageResponse);          // pagination.jsp용 객체
         model.addAttribute("sort", sort);
         model.addAttribute("keyword", keyword);
-        model.addAttribute("page", page);
-        model.addAttribute("totalPages", totalPages);
 
         return "post/main-post";
     }
@@ -63,14 +72,13 @@ public class PostController {
         return "post/new-post";
     }
 
-    // 새 게시물 등록 처리 (POST) - 로그인 없이 익명 처리
+    // 새 게시물 등록 처리 (POST)
     @PostMapping("/new-post")
     public String createPost(PostDto postDto, @RequestParam(value = "imageFiles", required = false) List<MultipartFile> imageFiles) {
         try {
             if (postDto.getWriter() == null || postDto.getWriter().trim().isEmpty()) {
                 postDto.setWriter("익명");
             }
-
             postService.save(postDto, imageFiles);
         } catch (IOException e) {
             e.printStackTrace();
@@ -100,12 +108,10 @@ public class PostController {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
         return "redirect:/detail?postId=" + post.getPostId();
     }
 
-
-    // 삭제 처리 -> 삭제 완료 후 main-post로 이동
+    // 삭제 처리
     @PostMapping("/delete-post")
     public String deletePost(@RequestParam("postId") Long postId) {
         if (postId != null) {

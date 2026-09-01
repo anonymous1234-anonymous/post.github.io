@@ -1,69 +1,29 @@
-.zt-follow-button {
-    border: 0;
-    padding: 0;
-    background: transparent;
-    color: #ff4d3d;
-    font-size: 0.8rem;
-    font-weight: 600;
+.zt-main-preview-wrapper {
+    position: relative; /* 버튼 배치를 위한 기준 설정 */
+}
+
+.zt-slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    font-size: 18px;
+    padding: 8px 12px;
     cursor: pointer;
+    border-radius: 4px;
+    z-index: 10;
 }
 
-.zt-follow-button.is-following {
-    color: #6c757d;
+.zt-slider-btn:hover {
+    background-color: rgba(0, 0, 0, 0.8);
 }
 
-.zt-follow-button:disabled {
-    opacity: 0.5;
-    cursor: default;
+.zt-prev-btn {
+    left: 10px;
 }
 
-.zt-detail-author-header {
-    justify-content: space-between;
-    gap: 16px;
-    min-height: 96px;
-    padding: 16px;
-}
-
-.zt-detail-author {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: 10px;
-}
-
-.zt-detail-author-main {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-}
-
-.zt-detail-author-sub {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 3px;
-    color: #6c757d;
-    font-size: 0.8rem;
-}
-
-.zt-detail-owner-actions {
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-    gap: 6px;
-}
-
-.zt-detail-owner-actions form {
-    margin: 0;
-}
-
-@media (max-width: 575.98px) {
-    .zt-detail-author-header {
-        align-items: flex-start;
-    }
-
-    .zt-detail-owner-actions {
-        flex-direction: column;
-    }
+.zt-next-btn {
+    right: 10px;
 }

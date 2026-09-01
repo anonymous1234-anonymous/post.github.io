@@ -61,7 +61,7 @@ public class PostApiController {
 
     /**
      * 게시글 수정 API (로그인 없이)
-     * PUT /api/posts/{postId}
+
      */
     @PutMapping("/{postId}")
     public ApiResponse<Void> updatePost(

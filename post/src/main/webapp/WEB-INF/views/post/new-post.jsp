@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="게시물 작성 페이지 / Post Creation Page">
-  <title>새 게시물 / New Post | post</title>
+  <title>새 게시물 / post | post</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
@@ -21,7 +21,7 @@
   </header>
   <nav class="zt-mobile-nav" aria-label="모바일 메뉴">
     <a href="${pageContext.request.contextPath}/home" class="" aria-label="home"><i class="bi bi-house"></i></a>
-    <a href="${pageContext.request.contextPath}/main-post" class="" aria-label="짠맛투어"><i class="bi bi-grid-3x3-gap"></i></a>
+    <a href="${pageContext.request.contextPath}/main-post" class="" aria-label="post"><i class="bi bi-grid-3x3-gap"></i></a>
     <a href="${pageContext.request.contextPath}/new-post" class="active" aria-label="new"><i class="bi bi-plus-square"></i></a>
     <a href="${pageContext.request.contextPath}/profile" class="" aria-label="profile"><i class="bi bi-person-circle"></i></a>
   </nav>
@@ -51,16 +51,15 @@
               enctype="multipart/form-data"
               onsubmit="return validateAndBlock(event);">
 
-
+          <!-- 이미지 업로더 영역 (화살표 버튼 및 카운터 포함) -->
           <div class="col-lg-6">
             <div class="zt-post-image-uploader" data-post-image-uploader>
 
-              <div class="zt-post-main-preview">
-                <!-- 중복 ID 제거 및 고유 ID 부여 -->
+              <div class="zt-post-main-preview position-relative">
                 <div id="post-image-empty" class="zt-post-image-empty">
                   <i class="bi bi-images display-5"></i>
-                  <strong>사진을 선택하세요 </strong>
-                  <small>JPG, PNG 파일을 최대 5장까지 선택할 수 있습니다. </small>
+                  <strong>사진을 선택하세요</strong>
+                  <small>JPG, PNG 파일을 최대 5장까지 선택할 수 있습니다.</small>
                 </div>
 
                 <img id="post-main-preview"
@@ -68,9 +67,13 @@
                      src=""
                      alt="선택한 사진 미리보기"
                      hidden>
+
+                <!-- 좌우 넘기기 버튼 -->
+                <button type="button" id="post-prev-btn" class="zt-slider-btn zt-prev-btn" style="display: none; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">〈</button>
+                <button type="button" id="post-next-btn" class="zt-slider-btn zt-next-btn" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">〉</button>
               </div>
 
-              <div class="zt-post-thumbnail-row">
+              <div class="zt-post-thumbnail-row mt-2">
                 <div id="post-thumbnail-list" class="zt-post-thumbnail-list"></div>
 
                 <label class="zt-post-add-image" for="new-post-image">
@@ -86,36 +89,36 @@
                 </label>
               </div>
 
-              <p class="zt-post-image-count">
-                선택한 사진 :
-                <strong id="post-image-count">0</strong>
-                / 5
+              <!-- 현재 번호 / 총 개수 형식의 카운터 -->
+              <p class="zt-post-image-count mt-2 text-center">
+                <strong id="post-image-count">0</strong> / 5
               </p>
 
             </div>
           </div>
 
+          <!-- 게시글 입력 폼 영역 -->
           <div class="col-lg-6">
             <div class="mb-3">
-              <label class="form-label" for="post-title">제목 </label>
-              <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="여행 제목을 입력하세요 " value="<c:out value='${post.title}'/>" required>
+              <label class="form-label" for="post-title">제목</label>
+              <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="여행 제목을 입력하세요" value="<c:out value='${post.title}'/>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label" for="post-place">여행 장소 </label>
-              <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 망원동 " value="<c:out value='${post.place}'/>" required>
+              <label class="form-label" for="post-place">장소 </label>
+              <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 망원동" value="<c:out value='${post.place}'/>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label" for="post-content">내용 </label>
+              <label class="form-label" for="post-content">내용</label>
               <textarea id="post-content"
                         name="content"
                         class="form-control"
                         rows="8"
-                        placeholder="여행 내용을 적어 주세요. (최소 10자 이상) "
+                        placeholder="내용을 적어 주세요. (최소 10자 이상)"
                         required><c:out value="${post.content}"/></textarea>
             </div>
 
             <div class="mb-3">
-              <label class="form-label" for="transport-cost">교통비 </label>
+              <label class="form-label" for="transport-cost">교통비</label>
               <input id="transport-cost"
                      name="transportCost"
                      class="form-control"
@@ -128,7 +131,7 @@
             </div>
 
             <div class="mb-3">
-              <label class="form-label" for="food-cost">식비 </label>
+              <label class="form-label" for="food-cost">식비</label>
               <input id="food-cost"
                      name="foodCost"
                      class="form-control"
@@ -154,14 +157,14 @@
             </div>
 
             <div class="mb-3">
-              <label class="form-label" for="post-tags">태그 </label>
-              <input id="post-tags" class="form-control" type="text" placeholder="#여행 #가성비여행 ">
+              <label class="form-label" for="post-tags">태그</label>
+              <input id="post-tags" class="form-control" type="text" placeholder="#여행 #가성비">
             </div>
             <div class="form-check form-switch mb-4">
               <input id="share-route" class="form-check-input" type="checkbox" checked>
-              <label class="form-check-label" for="share-route">여행 동선 공개 </label>
+              <label class="form-check-label" for="share-route"> 동선 공개</label>
             </div>
-            <button class="btn btn-primary zt-primary-btn w-100 py-2" type="submit">작성 완료 </button>
+            <button class="btn btn-primary zt-primary-btn w-100 py-2" type="submit">작성 완료</button>
           </div>
         </form>
       </section>
@@ -171,11 +174,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-image-preview.js"></script>
-
-<%-- 외부 js 파일 대신 이 안에서 확실하게 동작하도록 스크립트를 통합 관리합니다 --%>
+<script src="${pageContext.request.contextPath}/js/common.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+ <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const maxImageCount = 5;
@@ -187,8 +188,10 @@
     const thumbnailList = document.querySelector("#post-thumbnail-list");
     const imageCount = document.querySelector("#post-image-count");
 
+    const prevBtn = document.querySelector("#post-prev-btn");
+    const nextBtn = document.querySelector("#post-next-btn");
+
     if (!uploader || !imageInput || !emptyMessage || !mainPreview || !thumbnailList || !imageCount) {
-      console.error("이미지 업로더 요소를 찾지 못했습니다.");
       return;
     }
 
@@ -200,21 +203,37 @@
         emptyMessage.style.display = "flex";
         mainPreview.hidden = true;
         mainPreview.removeAttribute("src");
+        if (prevBtn) prevBtn.style.display = "none";
+        if (nextBtn) nextBtn.style.display = "none";
+        imageCount.textContent = "0";
         return;
       }
 
       if (index >= selectedFiles.length) {
         index = selectedFiles.length - 1;
       }
-
       currentImageIndex = index;
-      const file = selectedFiles[index];
-      if (!file) return;
 
+      const file = selectedFiles[index];
       const previewUrl = URL.createObjectURL(file);
+
       mainPreview.src = previewUrl;
       mainPreview.hidden = false;
       emptyMessage.style.display = "none";
+
+      // '현재 번호 / 총 개수' 형식으로 갱신
+      imageCount.textContent = `${currentImageIndex + 1} / ${selectedFiles.length}`;
+
+      // 이미지가 2장 이상일 때만 좌우 버튼 표시
+      if (prevBtn && nextBtn) {
+        const hasMultiple = selectedFiles.length > 1;
+        prevBtn.style.display = hasMultiple ? "block" : "none";
+        nextBtn.style.display = hasMultiple ? "block" : "none";
+      }
+
+      mainPreview.onload = () => {
+        URL.revokeObjectURL(previewUrl);
+      };
     }
 
     function renderThumbnails() {
@@ -250,7 +269,6 @@
         removeButton.type = "button";
         removeButton.className = "zt-post-thumbnail-remove btn btn-danger btn-sm position-absolute top-0 end-0 p-0 px-1";
         removeButton.style.fontSize = "10px";
-        removeButton.setAttribute("aria-label", "사진 삭제");
         removeButton.textContent = "×";
 
         removeButton.addEventListener("click", (e) => {
@@ -264,8 +282,6 @@
           }
 
           updateImageInput();
-          imageCount.textContent = String(selectedFiles.length);
-
           renderMainPreview(currentImageIndex);
           renderThumbnails();
         });
@@ -285,9 +301,29 @@
       imageInput.files = dataTransfer.files;
     }
 
+    // 왼쪽 화살표 클릭 이벤트
+    if (prevBtn) {
+      prevBtn.addEventListener("click", () => {
+        if (selectedFiles.length <= 1) return;
+        currentImageIndex = (currentImageIndex - 1 + selectedFiles.length) % selectedFiles.length;
+        renderMainPreview(currentImageIndex);
+        renderThumbnails();
+      });
+    }
+
+    // 오른쪽 화살표 클릭 이벤트
+    if (nextBtn) {
+      nextBtn.addEventListener("click", () => {
+        if (selectedFiles.length <= 1) return;
+        currentImageIndex = (currentImageIndex + 1) % selectedFiles.length;
+        renderMainPreview(currentImageIndex);
+        renderThumbnails();
+      });
+    }
+
     imageInput.addEventListener("change", () => {
       const newFiles = Array.from(imageInput.files);
-      imageInput.value = ""; // 중복 선택 초기화
+      imageInput.value = "";
 
       const imageFiles = newFiles.filter((file) => {
         return file.type === "image/jpeg" || file.type === "image/png";
@@ -309,7 +345,6 @@
         selectedFiles = [...selectedFiles, ...filesToAdd];
         updateImageInput();
 
-        imageCount.textContent = String(selectedFiles.length);
         renderMainPreview(currentImageIndex);
         renderThumbnails();
       }
@@ -336,21 +371,18 @@
     const title = titleInput ? titleInput.value.trim() : "";
     const content = contentInput ? contentInput.value.trim() : "";
 
-    // 1. 내용 길이 검증 (10자 이상)
     if (content === "" || content.length < 10) {
       alert("내용을 10자 이상 작성해주세요.");
       if (e) e.preventDefault();
       return false;
     }
 
-    // 2. 자음/모음만 작성했는지 검증
     if (/^[ㄱ-ㅎㅏ-ㅣ\s]+$/.test(content)) {
       alert("자음이나 모음만으로는 작성할 수 없습니다.");
       if (e) e.preventDefault();
       return false;
     }
 
-    // 3. 비속어/욕설 필터링
     const cleanContent = getSanitizedText(content);
     const cleanTitle = getSanitizedText(title);
     const badWords = [
