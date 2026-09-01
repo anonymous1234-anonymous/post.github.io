@@ -1,63 +1,214 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const carousels = document.querySelectorAll(
-        "[data-detail-carousel]"
+    const maxImageCount = 5;
+
+    const uploader = document.querySelector(
+        "[data-post-image-uploader]"
+    );
+    const imageInput = document.querySelector(
+        "#new-post-image"
+    );
+    const emptyMessage = document.querySelector(
+        "#post-image-empty"
+    );
+    const mainPreview = document.querySelector(
+        "#post-main-preview"
+    );
+    const thumbnailList = document.querySelector(
+        "#post-thumbnail-list"
+    );
+    const imageCount = document.querySelector(
+        "#post-image-count"
     );
 
-    carousels.forEach((carousel) => {
-        const slides = carousel.querySelectorAll(
-            ".zt-detail-slide"
-        );
-        const prevButton = carousel.querySelector(
-            "[data-carousel-prev]"
-        );
-        const nextButton = carousel.querySelector(
-            "[data-carousel-next]"
-        );
-        const currentNumber = carousel.querySelector(
-            "[data-carousel-current]"
-        );
+    // 👇 좌우 화살표 버튼 요소 선택 추가
+    const prevBtn = document.querySelector("#post-prev-btn");
+    const nextBtn = document.querySelector("#post-next-btn");
 
-        if (slides.length <= 1) {
+    if (
+        !uploader
+        || !imageInput
+        || !emptyMessage
+        || !mainPreview
+        || !thumbnailList
+        || !imageCount
+    ) {
+        return;
+    }
+
+    let selectedFiles = [];
+    let currentImageIndex = 0;
+
+    function renderMainPreview(index) {
+        if (selectedFiles.length === 0) {
+            emptyMessage.hidden = false;
+            mainPreview.hidden = true;
+            mainPreview.removeAttribute("src");
+            if (prevBtn) prevBtn.style.display = "none";
+            if (nextBtn) nextBtn.style.display = "none";
             return;
         }
 
-        let currentIndex = 0;
+        currentImageIndex = index;
 
-        function updateButtons() {
-            prevButton.classList.toggle(
-                "is-hidden",
-                currentIndex === 0
-            );
+        const previewUrl = URL.createObjectURL(
+            selectedFiles[index]
+        );
 
-            nextButton.classList.toggle(
-                "is-hidden",
-                currentIndex === slides.length - 1
-            );
+        mainPreview.src = previewUrl;
+        mainPreview.hidden = false;
+        emptyMessage.hidden = true;
+
+        // 👇 이미지가 2장 이상일 때만 좌우 버튼 표시
+        if (prevBtn && nextBtn) {
+            const hasMultiple = selectedFiles.length > 1;
+            prevBtn.style.display = hasMultiple ? "block" : "none";
+            nextBtn.style.display = hasMultiple ? "block" : "none";
         }
 
-        function showSlide(index) {
-            if (index < 0 || index >= slides.length) {
-                return;
+        mainPreview.onload = () => {
+            URL.revokeObjectURL(previewUrl);
+        };
+    }
+
+    function renderThumbnails() {
+        thumbnailList.innerHTML = "";
+
+        selectedFiles.forEach((file, index) => {
+            const item = document.createElement("div");
+            item.className = "zt-post-thumbnail-item";
+
+            const button = document.createElement("button");
+
+            button.type = "button";
+            button.className = "zt-post-thumbnail";
+
+            if (index === currentImageIndex) {
+                button.classList.add("active");
             }
 
-            slides[currentIndex].classList.remove("is-active");
+            const image = document.createElement("img");
+            const thumbnailUrl = URL.createObjectURL(file);
 
-            currentIndex = index;
+            image.src = thumbnailUrl;
+            image.alt = file.name;
 
-            slides[currentIndex].classList.add("is-active");
-            currentNumber.textContent = String(currentIndex + 1);
+            image.onload = () => {
+                URL.revokeObjectURL(thumbnailUrl);
+            };
 
-            updateButtons();
+            button.addEventListener("click", () => {
+                renderMainPreview(index);
+                renderThumbnails();
+            });
+
+            const removeButton =
+                document.createElement("button");
+
+            removeButton.type = "button";
+            removeButton.className =
+                "zt-post-thumbnail-remove";
+            removeButton.setAttribute(
+                "aria-label",
+                "사진 삭제"
+            );
+            removeButton.textContent = "×";
+
+            removeButton.addEventListener("click", () => {
+                selectedFiles.splice(index, 1);
+
+                if (
+                    currentImageIndex
+                    >= selectedFiles.length
+                ) {
+                    currentImageIndex = Math.max(
+                        0,
+                        selectedFiles.length - 1
+                    );
+                } else if (index < currentImageIndex) {
+                    currentImageIndex--;
+                }
+
+                updateImageInput();
+
+                imageCount.textContent =
+                    String(selectedFiles.length);
+
+                renderMainPreview(currentImageIndex);
+                renderThumbnails();
+            });
+
+            button.append(image);
+            item.append(button);
+            item.append(removeButton);
+            thumbnailList.append(item);
+        });
+    }
+
+    function updateImageInput() {
+        const dataTransfer = new DataTransfer();
+
+        selectedFiles.forEach((file) => {
+            dataTransfer.items.add(file);
+        });
+
+        imageInput.files = dataTransfer.files;
+    }
+
+    // 👇 왼쪽 화살표 클릭 이벤트 (이전 사진)
+    if (prevBtn) {
+        prevBtn.addEventListener("click", () => {
+            if (selectedFiles.length === 0) return;
+            currentImageIndex = (currentImageIndex - 1 + selectedFiles.length) % selectedFiles.length;
+            renderMainPreview(currentImageIndex);
+            renderThumbnails();
+        });
+    }
+
+    // 👇 오른쪽 화살표 클릭 이벤트 (다음 사진)
+    if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+            if (selectedFiles.length === 0) return;
+            currentImageIndex = (currentImageIndex + 1) % selectedFiles.length;
+            renderMainPreview(currentImageIndex);
+            renderThumbnails();
+        });
+    }
+
+    imageInput.addEventListener("change", () => {
+        const newFiles = Array.from(imageInput.files);
+
+        const imageFiles = newFiles.filter((file) => {
+            return file.type === "image/jpeg"
+                || file.type === "image/png";
+        });
+
+        if (imageFiles.length !== newFiles.length) {
+            alert("JPG 또는 PNG 이미지만 선택할 수 있습니다.");
         }
 
-        prevButton.addEventListener("click", () => {
-            showSlide(currentIndex - 1);
-        });
+        const remainingCount =
+            maxImageCount - selectedFiles.length;
 
-        nextButton.addEventListener("click", () => {
-            showSlide(currentIndex + 1);
-        });
+        if (imageFiles.length > remainingCount) {
+            alert("이미지는 최대 5장까지 선택할 수 있습니다.");
+        }
 
-        updateButtons();
+        const filesToAdd = imageFiles.slice(
+            0,
+            remainingCount
+        );
+
+        selectedFiles = [
+            ...selectedFiles,
+            ...filesToAdd
+        ];
+
+        updateImageInput();
+
+        imageCount.textContent =
+            String(selectedFiles.length);
+
+        renderMainPreview(0);
+        renderThumbnails();
     });
 });

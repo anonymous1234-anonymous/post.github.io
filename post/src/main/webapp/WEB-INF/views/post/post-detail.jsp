@@ -6,8 +6,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="여행 게시물 사진 상세 페이지">
-  <title>피드 상세 | 짠맛투어</title>
+  <meta name="description" content="게시물 상세 페이지">
+  <title>피드 상세 | post</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
@@ -18,15 +18,13 @@
 
 <header class="zt-mobile-header">
   <a class="zt-brand" href="${pageContext.request.contextPath}/home">
-    <span>짠맛투어</span>
+    <span> post</span>
   </a>
 </header>
 <nav class="zt-mobile-nav" aria-label="모바일 메뉴">
   <a href="${pageContext.request.contextPath}/home" class="" aria-label="home"><i class="bi bi-house"></i></a>
-  <a href="${pageContext.request.contextPath}/my-travel" class="active" aria-label="여행 이야기"><i class="bi bi-grid-3x3-gap"></i></a>
+  <a href="${pageContext.request.contextPath}/main-post" class="active" aria-label="이야기"><i class="bi bi-grid-3x3-gap"></i></a>
   <a href="${pageContext.request.contextPath}/new-post" class="" aria-label="new"><i class="bi bi-plus-square"></i></a>
-  <a href="${pageContext.request.contextPath}/chat" class="" aria-label="chat"><i class="bi bi-chat-dots"></i></a>
-  <a href="${pageContext.request.contextPath}/profile" class="" aria-label="profile"><i class="bi bi-person-circle"></i></a>
 </nav>
 
   <div class="zt-layout">
@@ -39,7 +37,7 @@
 <article class="zt-panel overflow-hidden">
 
   <div class="zt-detail-title-area">
-    <span class="zt-detail-category">여행 이야기</span>
+    <span class="zt-detail-category">이야기</span>
     <h1 class="zt-detail-title">
       <c:out value="${post.title}"/>
     </h1>
@@ -64,7 +62,7 @@
       </div>
     </div>
 
-    <%-- 🚀 수정 및 삭제 버튼 영역 복원 --%>
+    <%-- 수정 및 삭제 버튼 영역 --%>
     <div class="zt-detail-owner-actions">
       <a class="btn btn-outline-secondary btn-sm" href="${pageContext.request.contextPath}/edit-post?postId=${post.postId}">수정</a>
       <form action="${pageContext.request.contextPath}/delete-post" method="post" onsubmit="return confirm('정말 삭제하시겠습니까?');" style="display:inline;">
@@ -144,11 +142,8 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-image-preview.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
-
+<script src="${pageContext.request.contextPath}/js/common.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+ <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
 </html>
