@@ -10,7 +10,6 @@
         <result property="writer" column="WRITER"/>
         <result property="title" column="TITLE"/>
         <result property="content" column="CONTENT"/>
-        <result property="viewCount" column="VIEW_COUNT"/>
         <result property="createAt" column="CREATE_AT"/>
         <result property="formattedCreateAt" column="FORMATTED_CREATE_AT"/>
         <result property="place" column="PLACE"/>
@@ -188,12 +187,6 @@
         WHERE UPLOAD_ID = #{uploadId}
     </delete>
 
-    <!-- 게시글 삭제 -->
-    <delete id="deleteById" parameterType="long">
-        DELETE FROM POST
-        WHERE POST_ID = #{postId}
-    </delete>
-
     <!-- 전체 게시글 개수 조회 (검색어 포함) -->
     <select id="countAll" parameterType="string" resultType="int">
         SELECT COUNT(*)
@@ -207,8 +200,10 @@
         </if>
     </select>
 
+
     <delete id="delete" parameterType="long">
-        DELETE FROM post WHERE post_id = #{postId}
+        DELETE FROM POST WHERE POST_ID = #{postId}
     </delete>
+
 
 </mapper>

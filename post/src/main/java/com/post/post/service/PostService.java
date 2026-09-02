@@ -1,7 +1,7 @@
 package com.post.post.service;
 
-import com.post.common.page.PageRequest;
-import com.post.common.page.PageResponse;
+import com.post.common.response.PageRequest;
+import com.post.common.response.PageResponse;
 import com.post.common.util.FileUploadUtil;
 import com.post.common.util.SavedFile;
 import com.post.post.dto.PostDto;

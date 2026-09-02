@@ -1,4 +1,4 @@
-package com.post.common.page;
+package com.post.common.response;
 
 import com.post.post.dto.PostDto;
 import lombok.Data;

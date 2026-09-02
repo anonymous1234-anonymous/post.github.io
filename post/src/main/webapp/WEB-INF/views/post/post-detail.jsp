@@ -74,34 +74,72 @@
 
   <c:choose>
     <c:when test="${not empty post.images}">
-      <div class="zt-detail-carousel" data-detail-carousel>
-        <div class="zt-detail-slides">
+      <!-- 캐러셀 메인 박스 -->
+      <div class="zt-detail-carousel" style="position: relative !important; width: 100%; height: 400px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 1rem;">
+
+        <!-- 이미지 목록 -->
+        <div id="image-slider-container" style="position: relative; width: 100%; height: 100%;">
           <c:forEach var="image" items="${post.images}" varStatus="status">
-            <img class="zt-detail-image zt-detail-slide ${status.first ? 'is-active' : ''}"
+            <img class="slide-item"
                  src="${pageContext.request.contextPath}${image.uploadPath}"
                  alt="${image.originName}"
-                 data-slide-index="${status.index}"
-                 onerror="this.onerror=null; this.src='${pageContext.request.contextPath}/assets/images/c85e75481a9f216601e5c9593baf1854.jpg';">
+                 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: ${status.first ? 'block' : 'none'};"
+                 data-index="${status.index}">
           </c:forEach>
         </div>
 
+        <!-- 2장 이상일 때만 좌우 버튼 및 카운트 표시 -->
         <c:if test="${post.images.size() > 1}">
-          <button type="button" class="zt-detail-carousel-button zt-detail-carousel-prev" data-carousel-prev aria-label="이전 사진">
-            <i class="bi bi-chevron-left"></i>
+          <!-- 왼쪽 이전 버튼 -->
+          <button type="button" onclick="moveSlide(-1)" aria-label="이전 사진"
+                  style="position: absolute !important; left: 15px !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 100 !important; width: 40px !important; height: 40px !important; border-radius: 50% !important; background: rgba(0, 0, 0, 0.6) !important; color: white !important; border: none !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; padding: 0 !important;">
+            <i class="bi bi-chevron-left" style="font-size: 1.2rem;"></i>
           </button>
-          <button type="button" class="zt-detail-carousel-button zt-detail-carousel-next" data-carousel-next aria-label="다음 사진">
-            <i class="bi bi-chevron-right"></i>
+
+          <!-- 오른쪽 다음 버튼 -->
+          <button type="button" onclick="moveSlide(1)" aria-label="다음 사진"
+                  style="position: absolute !important; right: 15px !important; top: 50% !important; transform: translateY(-50%) !important; z-index: 100 !important; width: 40px !important; height: 40px !important; border-radius: 50% !important; background: rgba(0, 0, 0, 0.6) !important; color: white !important; border: none !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; padding: 0 !important;">
+            <i class="bi bi-chevron-right" style="font-size: 1.2rem;"></i>
           </button>
-          <div class="zt-detail-carousel-count">
-            <span data-carousel-current>1</span> / <span data-carousel-total>${post.images.size()}</span>
+
+          <!-- 현재 번호 / 총 개수 -->
+          <div style="position: absolute !important; bottom: 15px !important; right: 15px !important; background: rgba(0, 0, 0, 0.6) !important; color: white !important; padding: 4px 12px !important; border-radius: 12px !important; font-size: 0.85rem !important; z-index: 100 !important;">
+            <span id="current-index">1</span> / <span>${post.images.size()}</span>
           </div>
         </c:if>
+
       </div>
+
+      <!-- 1장씩 넘기기 제어 스크립트 -->
+      <c:if test="${post.images.size() > 1}">
+        <script>
+          if (typeof window.moveSlide === 'undefined') {
+              let currentIndex = 0;
+              const slides = document.querySelectorAll('.slide-item');
+              const totalSlides = slides.length;
+              const currentIndexSpan = document.getElementById('current-index');
+
+              window.moveSlide = function(direction) {
+                  if (totalSlides === 0) return;
+
+                  slides[currentIndex].style.display = 'none';
+                  currentIndex = (currentIndex + direction + totalSlides) % totalSlides;
+                  slides[currentIndex].style.display = 'block';
+
+                  if (currentIndexSpan) {
+                      currentIndexSpan.textContent = currentIndex + 1;
+                  }
+              };
+          }
+        </script>
+      </c:if>
+
     </c:when>
     <c:otherwise>
-      <img class="zt-detail-image"
+      <img class="rounded mb-3"
            src="${pageContext.request.contextPath}/assets/images/c85e75481a9f216601e5c9593baf1854.jpg"
-           alt="등록된 사진이 없습니다">
+           alt="등록된 사진이 없습니다"
+           style="width: 100%; height: 400px; object-fit: cover;">
     </c:otherwise>
   </c:choose>
 
@@ -142,8 +180,8 @@
   </div>
 </div>
 
-<script src="${pageContext.request.contextPath}/js/common.js"></script>
- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
- <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
+<!-- 스크립트 영역 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
 </html>

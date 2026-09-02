@@ -85,7 +85,7 @@
                          type="file"
                          accept="image/jpeg,image/png"
                          multiple
-                         hidden>
+                         class="d-none">
                 </label>
               </div>
 
@@ -101,11 +101,11 @@
           <div class="col-lg-6">
             <div class="mb-3">
               <label class="form-label" for="post-title">제목</label>
-              <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="여행 제목을 입력하세요" value="<c:out value='${post.title}'/>" required>
+              <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="제목을 입력하세요" value="<c:out value='${post.title}'/>" required>
             </div>
             <div class="mb-3">
               <label class="form-label" for="post-place">장소 </label>
-              <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 망원동" value="<c:out value='${post.place}'/>" required>
+              <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 성수 " value="<c:out value='${post.place}'/>" required>
             </div>
             <div class="mb-3">
               <label class="form-label" for="post-content">내용</label>
@@ -174,9 +174,12 @@
   </div>
 </div>
 
-<script src="${pageContext.request.contextPath}/js/common.js"></script>
- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
- <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-edit-image.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-image-preview.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const maxImageCount = 5;
@@ -197,6 +200,7 @@
 
     let selectedFiles = [];
     let currentImageIndex = 0;
+    let currentPreviewUrl = null; // 메모리 누수 및 즉시 해제 방지용 변수
 
     function renderMainPreview(index) {
       if (selectedFiles.length === 0) {
@@ -215,13 +219,19 @@
       currentImageIndex = index;
 
       const file = selectedFiles[index];
-      const previewUrl = URL.createObjectURL(file);
 
-      mainPreview.src = previewUrl;
+      // 이전 URL 해제
+      if (currentPreviewUrl) {
+        URL.revokeObjectURL(currentPreviewUrl);
+      }
+
+      currentPreviewUrl = URL.createObjectURL(file);
+
+      mainPreview.src = currentPreviewUrl;
       mainPreview.hidden = false;
       emptyMessage.style.display = "none";
 
-      // '현재 번호 / 총 개수' 형식으로 갱신
+      // '현재 번호 / 총 개수' 형식 갱신
       imageCount.textContent = `${currentImageIndex + 1} / ${selectedFiles.length}`;
 
       // 이미지가 2장 이상일 때만 좌우 버튼 표시
@@ -230,10 +240,6 @@
         prevBtn.style.display = hasMultiple ? "block" : "none";
         nextBtn.style.display = hasMultiple ? "block" : "none";
       }
-
-      mainPreview.onload = () => {
-        URL.revokeObjectURL(previewUrl);
-      };
     }
 
     function renderThumbnails() {
