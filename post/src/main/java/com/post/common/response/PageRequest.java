@@ -1,4 +1,4 @@
-package com.post.common.page;
+package com.post.common.response;
 import lombok.Data;
 
 @Data

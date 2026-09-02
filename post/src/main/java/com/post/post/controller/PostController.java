@@ -1,12 +1,13 @@
 package com.post.post.controller;
 
-import com.post.common.page.PageRequest;
-import com.post.common.page.PageResponse;
+import com.post.common.response.PageRequest;
+import com.post.common.response.PageResponse;
 import com.post.post.dto.PostDto;
 import com.post.post.service.PostService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
@@ -99,16 +100,16 @@ public class PostController {
 
     @PostMapping("/edit-post")
     public String updatePost(
-            PostDto post,
+            @ModelAttribute PostDto post,
             @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteImageIds,
             @RequestParam(value = "imageFiles", required = false) List<MultipartFile> imageFiles
-    ) {
-        try {
-            postService.update(post, deleteImageIds, imageFiles);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return "redirect:/detail?postId=" + post.getPostId();
+    ) throws IOException {
+
+        // 서비스의 수정 메서드 호출 (기존에 구현 완료한 로직)
+        postService.update(post, deleteImageIds, imageFiles);
+
+        // 수정 완료 후 상세 페이지나 목록으로 리다이렉트
+        return "redirect:/edit-post/" + post.getPostId();
     }
 
     // 삭제 처리
