@@ -4,6 +4,7 @@ import com.post.common.response.PageRequest;
 import com.post.common.response.PageResponse;
 import com.post.common.util.FileUploadUtil;
 import com.post.common.util.SavedFile;
+import com.post.common.validation.PostValidator;
 import com.post.post.dto.PostDto;
 import com.post.post.dto.PostImageDto;
 import com.post.post.mapper.PostMapper;
@@ -17,26 +18,107 @@ import java.util.List;
 @Service
 public class PostService {
 
-    private static final int MAX_IMAGE_COUNT = 5;
-
     private final PostMapper postMapper;
     private final FileUploadUtil fileUploadUtil;
+    private final PostValidator postValidator;
 
     @Value("${file.upload-dir.post}")
     private String postUploadDir;
 
     public PostService(
             PostMapper postMapper,
-            FileUploadUtil fileUploadUtil
+            FileUploadUtil fileUploadUtil,
+            PostValidator postValidator
     ) {
         this.postMapper = postMapper;
         this.fileUploadUtil = fileUploadUtil;
+        this.postValidator = postValidator;
     }
 
     /**
-     * 페이징, 정렬, 검색 조건을 반영하여 PageResponse 객체로 반환
+     * 게시글 등록 (검증 + 저장 + 파일 업로드)
      */
-    public PageResponse getPostPage(PageRequest pageRequest, String sort, String keyword) { // 제네릭 제거
+    public void save(PostDto postDto, List<MultipartFile> imageFiles) throws IOException {
+        // 1. PostValidator를 통한 파일 검증
+        postValidator.validateSave(imageFiles);
+
+        // 2. 게시글 기본 정보 저장 (DB Insert 후 PK 생성)
+        postMapper.save(postDto);
+        Long postId = postDto.getPostId();
+
+        // 3. 첨부파일 업로드 및 이미지 정보 DB 저장 (2단계 처리)
+        if (imageFiles != null && !imageFiles.isEmpty()) {
+            int imageOrder = 0; // 이미지 순서 처리용
+            for (MultipartFile file : imageFiles) {
+                if (file.isEmpty()) continue;
+
+                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "post");
+
+                // 💡 PostImageDto 빌더 (uploadPath 필드명 사용 기준)
+                PostImageDto imageDto = PostImageDto.builder()
+                        .originName(savedFile.getSaveName())
+                        .uploadPath(savedFile.getSaveName()) // XML의 #{uploadPath}와 매칭
+                        .imageOrder(imageOrder++)
+                        .build();
+
+                // ① IMAGE_UPLOAD 테이블에 저장 (useGeneratedKeys로 uploadId가 imageDto에 담김)
+                postMapper.saveImage(imageDto);
+                Long uploadId = imageDto.getUploadId(); // 생성된 PK 획득
+
+                // ② POST_UPLOAD 관계 테이블에 매핑 저장
+                postMapper.savePostImage(postId, uploadId);
+            }
+        }
+    }
+
+    /**
+     * 게시글 수정 (정보 수정 + 기존 이미지 삭제 + 새 이미지 추가)
+     */
+    public void update(PostDto postDto, List<Long> deleteImageIds, List<MultipartFile> imageFiles) throws IOException {
+        Long postId = postDto.getPostId();
+
+        // 1. 기존 이미지 목록 조회
+        List<PostImageDto> existingImages = postMapper.findImagesByPostId(postId);
+
+        // 2. PostValidator를 통한 수정 파일 검증
+        postValidator.validateUpdate(existingImages, deleteImageIds, imageFiles);
+
+        // 3. 게시글 기본 정보 업데이트
+        postMapper.update(postDto);
+
+        // 4. 삭제 대상 이미지 처리 (POST_UPLOAD 관계 먼저 끊고, IMAGE_UPLOAD 삭제)
+        if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
+            for (Long uploadId : deleteImageIds) {
+                postMapper.deleteByPostIdAndUploadId(postId, uploadId); // 관계 테이블 삭제
+                postMapper.deleteImage(uploadId); // 이미지 본문 테이블 삭제
+            }
+        }
+
+        // 5. 새 이미지 업로드 및 저장
+        if (imageFiles != null && !imageFiles.isEmpty()) {
+            // 현재 남아있는 이미지 개수를 고려해 order 시작값 지정 가능 (여기서는 단순 예시)
+            int imageOrder = existingImages.size();
+            for (MultipartFile file : imageFiles) {
+                if (file.isEmpty()) continue;
+
+                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "post");
+
+
+                PostImageDto imageDto = PostImageDto.builder()
+                        .originName(savedFile.getSaveName())
+                        .uploadPath(savedFile.getSaveName())
+                        .imageOrder(imageOrder++)
+                        .build();
+
+                postMapper.saveImage(imageDto);
+                Long uploadId = imageDto.getUploadId();
+
+                postMapper.savePostImage(postId, uploadId);
+            }
+        }
+    }
+
+    public PageResponse getPostPage(PageRequest pageRequest, String sort, String keyword) {
         if (pageRequest.getPage() < 1) {
             pageRequest.setPage(1);
         }
@@ -44,20 +126,15 @@ public class PostService {
         int totalCount = postMapper.countAll(keyword);
         List<PostDto> list = postMapper.findPage(sort, keyword, pageRequest.getOffset(), pageRequest.getSize());
 
-        return new PageResponse(list, totalCount, pageRequest); // 제네릭 제거
+        return new PageResponse(list, totalCount, pageRequest);
     }
 
-    /**
-     * 기존에 호출하던 곳을 위한 헬퍼 메서드 (findPage)
-     */
     public List<PostDto> findPage(String sort, String keyword, int offset, int size) {
         return postMapper.findPage(sort, keyword, offset, size);
     }
 
-
     public PostDto findById(Long postId) {
         PostDto post = postMapper.findById(postId);
-
         if (post == null) {
             return null;
         }
@@ -68,144 +145,12 @@ public class PostService {
         return post;
     }
 
-    public void save(PostDto post, List<MultipartFile> imageFiles) throws IOException {
-        // 1. 이미지 개수 제한 검증
-        checkFileLimit(imageFiles);
-
-        // 2. 게시글 먼저 저장 (postId 생성)
-        postMapper.save(post);
-
-        if (imageFiles == null || imageFiles.isEmpty()) {
-            return;
-        }
-
-        int imageOrder = 1;
-
-        for (MultipartFile imageFile : imageFiles) {
-            if (imageFile.isEmpty()) {
-                continue;
-            }
-
-            String contentType = imageFile.getContentType();
-            if (!"image/jpeg".equals(contentType) && !"image/png".equals(contentType)) {
-                throw new IllegalArgumentException("JPG 또는 PNG 이미지만 등록할 수 있습니다.");
-            }
-
-            SavedFile savedFile = fileUploadUtil.save(imageFile, postUploadDir, "/uploads/post");
-
-            // Builder 패턴을 사용하여 PostImageDto 생성 및 값 세팅
-            PostImageDto postImage = PostImageDto.builder()
-                    .postId(post.getPostId())
-                    .originName(savedFile.getOriginalName())
-                    .uploadPath(savedFile.getPath())
-                    .imageOrder(imageOrder)
-                    .build();
-
-            postMapper.saveImage(postImage);
-            postMapper.savePostImage(post.getPostId(), postImage.getUploadId());
-
-            imageOrder++;
-        }
-    }
-
-    private void checkFileLimit(List<MultipartFile> imageFiles) throws IOException {
-        long imageCount = imageFiles == null
-                ? 0
-                : imageFiles.stream()
-                .filter(file -> !file.isEmpty())
-                .count();
-
-        if (imageCount > MAX_IMAGE_COUNT) {
-            throw new IllegalArgumentException("이미지는 최대 5장까지 등록할 수 있습니다.");
-        }
-    }
-    public void update(PostDto post, List<Long> deleteImageIds, List<MultipartFile> imageFiles) throws IOException {
-
-        List<PostImageDto> existingImages = postMapper.findImagesByPostId(post.getPostId());
-
-        List<PostImageDto> imagesToDelete = existingImages.stream()
-                .filter(image ->
-                        deleteImageIds != null
-                                && deleteImageIds.contains(image.getUploadId())
-                )
-                .toList();
-
-        long newImageCount = imageFiles == null
-                ? 0
-                : imageFiles.stream()
-                .filter(file -> !file.isEmpty())
-                .count();
-
-        int remainingImageCount = existingImages.size() - imagesToDelete.size();
-        if (remainingImageCount + newImageCount > MAX_IMAGE_COUNT) {
-            throw new IllegalArgumentException("이미지는 최대 5장까지 등록할 수 있습니다.");
-        }
-
-        if (imageFiles != null) {
-            for (MultipartFile imageFile : imageFiles) {
-                if (imageFile.isEmpty()) {
-                    continue;
-                }
-
-                String contentType = imageFile.getContentType();
-                if (!"image/jpeg".equals(contentType) && !"image/png".equals(contentType)) {
-                    throw new IllegalArgumentException("JPG 또는 PNG 이미지만 등록할 수 있습니다.");
-                }
-            }
-        }
-
-        postMapper.update(post);
-
-        // 삭제 대상 이미지 처리 (DB 및 물리 파일 삭제)
-
-        for (PostImageDto image : imagesToDelete) {
-            fileUploadUtil.delete(image.getUploadPath(), postUploadDir);
-            postMapper.deleteByPostIdAndUploadId(post.getPostId(), image.getUploadId());
-            postMapper.deleteImage(image.getUploadId());
-        }
-
-        // 남은 이미지들의 순서 재정렬
-
-        List<PostImageDto> remainingImages = postMapper.findImagesByPostId(post.getPostId());
-        int imageOrder = 1;
-
-        for (PostImageDto image : remainingImages) {
-            postMapper.updateImageOrder(image.getUploadId(), imageOrder);
-            imageOrder++;
-        }
-
-        if (imageFiles == null) {
-            return;
-        }
-
-        // 이미지 저장
-        for (MultipartFile imageFile : imageFiles) {
-            if (imageFile.isEmpty()) {
-                continue;
-            }
-
-            SavedFile savedFile = fileUploadUtil.save(imageFile, postUploadDir, "/uploads/post");
-
-            PostImageDto postImage = PostImageDto.builder()
-                    .postId(post.getPostId())
-                    .originName(savedFile.getOriginalName())
-                    .uploadPath(savedFile.getPath())
-                    .imageOrder(imageOrder)
-                    .build();
-
-            postMapper.saveImage(postImage);
-            postMapper.savePostImage(post.getPostId(), postImage.getUploadId());
-
-            imageOrder++;
-        }
+    public void delete(Long postId) {
+        deleteById(postId);
     }
 
     public void deleteById(Long postId) {
         postMapper.deleteById(postId);
-    }
-
-    public void delete(Long postId) {
-        postMapper.delete(postId);
     }
 
     public List<PostDto> findAll(String sort, String keyword) {
