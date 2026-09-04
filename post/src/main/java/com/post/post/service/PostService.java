@@ -52,14 +52,15 @@ public class PostService {
             for (MultipartFile file : imageFiles) {
                 if (file.isEmpty()) continue;
 
-                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "post");
+                // 세 번째 인자로 웹 프리픽스 경로를 전달합니다 (예: "/uploads/post")
+                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "/uploads/post");
 
-                // 💡 PostImageDto 빌더 (uploadPath 필드명 사용 기준)
                 PostImageDto imageDto = PostImageDto.builder()
-                        .originName(savedFile.getSaveName())
-                        .uploadPath(savedFile.getSaveName()) // XML의 #{uploadPath}와 매칭
+                        .originName(savedFile.getOriginalName())
+                        .uploadPath(savedFile.getPath()) // savedFile.getPath()는 "/uploads/post/uuid파일명.png" 형태를 반환합니다.
                         .imageOrder(imageOrder++)
                         .build();
+
 
                 // ① IMAGE_UPLOAD 테이블에 저장 (useGeneratedKeys로 uploadId가 imageDto에 담김)
                 postMapper.saveImage(imageDto);
@@ -96,17 +97,16 @@ public class PostService {
 
         // 5. 새 이미지 업로드 및 저장
         if (imageFiles != null && !imageFiles.isEmpty()) {
-            // 현재 남아있는 이미지 개수를 고려해 order 시작값 지정 가능 (여기서는 단순 예시)
+            // 현재 남아있는 이미지 개수를 고려해 order 시작값 지정 가능
             int imageOrder = existingImages.size();
             for (MultipartFile file : imageFiles) {
                 if (file.isEmpty()) continue;
 
-                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "post");
-
+                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "/uploads/post");
 
                 PostImageDto imageDto = PostImageDto.builder()
-                        .originName(savedFile.getSaveName())
-                        .uploadPath(savedFile.getSaveName())
+                        .originName(savedFile.getOriginalName())
+                        .uploadPath(savedFile.getPath()) // savedFile.getPath()는 "/uploads/post/uuid파일명.png" 형태를 반환합니다.
                         .imageOrder(imageOrder++)
                         .build();
 

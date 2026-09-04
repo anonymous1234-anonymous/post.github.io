@@ -204,6 +204,11 @@
     <delete id="delete" parameterType="long">
         DELETE FROM POST WHERE POST_ID = #{postId}
     </delete>
+    
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM POST WHERE POST_ID = #{postId}
+    </delete>
+
 
 
 </mapper>

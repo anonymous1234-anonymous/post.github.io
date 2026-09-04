@@ -105,11 +105,11 @@ public class PostController {
             @RequestParam(value = "imageFiles", required = false) List<MultipartFile> imageFiles
     ) throws IOException {
 
-        // 서비스의 수정 메서드 호출 (기존에 구현 완료한 로직)
         postService.update(post, deleteImageIds, imageFiles);
 
-        // 수정 완료 후 상세 페이지나 목록으로 리다이렉트
-        return "redirect:/edit-post/" + post.getPostId();
+        // 수정 완료 후 상세 페이지로 이동 (postId 파라미터 전달)
+        return "redirect:/detail?postId=" + post.getPostId();
+
     }
 
     // 삭제 처리
