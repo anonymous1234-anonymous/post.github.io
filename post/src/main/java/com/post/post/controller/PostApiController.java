@@ -52,7 +52,7 @@ public class PostApiController {
      */
     @PostMapping
     public ApiResponse<Void> createPost(
-            @RequestPart("post") PostDto postDto,
+            @RequestPart("com/post/audio/controller") PostDto postDto,
             @RequestPart(value = "imageFiles", required = false) List<MultipartFile> imageFiles
     ) throws IOException {
         postService.save(postDto, imageFiles);
@@ -66,7 +66,7 @@ public class PostApiController {
     @PutMapping("/{postId}")
     public ApiResponse<Void> updatePost(
             @PathVariable Long postId,
-            @RequestPart("post") PostDto postDto,
+            @RequestPart("com/post/audio/controller") PostDto postDto,
             @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteImageIds,
             @RequestPart(value = "imageFiles", required = false) List<MultipartFile> imageFiles
     ) throws IOException {

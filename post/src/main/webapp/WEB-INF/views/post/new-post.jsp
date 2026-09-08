@@ -36,7 +36,7 @@
 
       <header class="zt-page-header">
         <h1>새 게시물 만들기</h1>
-        <p>사진, 동선, 경비와 태그를 입력합니다.</p>
+        <p>사진, 동영상, 오디오 및 파일들을 입력합니다.</p>
       </header>
 
       <section class="zt-panel zt-profile-card">
@@ -51,24 +51,24 @@
               enctype="multipart/form-data"
               onsubmit="return validateAndBlock(event);">
 
-          <!-- 이미지 업로더 영역 (화살표 버튼 및 카운터 포함) -->
           <div class="col-lg-6">
             <div class="zt-post-image-uploader" data-post-image-uploader>
 
-              <div class="zt-post-main-preview position-relative">
-                <div id="post-image-empty" class="zt-post-image-empty">
-                  <i class="bi bi-images display-5"></i>
-                  <strong>사진을 선택하세요</strong>
-                  <small>JPG, PNG 파일을 최대 5장까지 선택할 수 있습니다.</small>
+              <div class="zt-post-main-preview position-relative" style="min-height: 250px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 8px; overflow: hidden;">
+                <div id="post-image-empty" class="zt-post-image-empty text-center p-4">
+                  <i class="bi bi-folder-plus display-5"></i>
+                  <strong>파일을 선택하세요</strong>
+                  <p class="mb-0"><small>이미지, 동영상, 오디오 등 최대 10개까지 선택할 수 있습니다.</small></p>
                 </div>
+
+                <div id="dynamic-media-view" style="width: 100%; height: 100%; display: none; align-items: center; justify-content: center;"></div>
 
                 <img id="post-main-preview"
                      class="zt-post-main-image"
                      src=""
-                     alt="선택한 사진 미리보기"
+                     alt="선택한 파일 미리보기"
                      hidden>
 
-                <!-- 좌우 넘기기 버튼 -->
                 <button type="button" id="post-prev-btn" class="zt-slider-btn zt-prev-btn" style="display: none; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">〈</button>
                 <button type="button" id="post-next-btn" class="zt-slider-btn zt-next-btn" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">〉</button>
               </div>
@@ -78,26 +78,23 @@
 
                 <label class="zt-post-add-image" for="new-post-image">
                   <i class="bi bi-plus-lg"></i>
-                  <span>사진</span>
+                  <span>파일</span>
 
                   <input id="new-post-image"
-                         name="imageFiles"
+                         name="files"
                          type="file"
-                         accept="image/jpeg,image/png"
                          multiple
                          class="d-none">
                 </label>
               </div>
 
-              <!-- 현재 번호 / 총 개수 형식의 카운터 -->
               <p class="zt-post-image-count mt-2 text-center">
-                <strong id="post-image-count">0</strong> / 5
+                <strong id="post-image-count">0</strong> / 10
               </p>
 
             </div>
           </div>
 
-          <!-- 게시글 입력 폼 영역 -->
           <div class="col-lg-6">
             <div class="mb-3">
               <label class="form-label" for="post-title">제목</label>
@@ -174,20 +171,15 @@
   </div>
 </div>
 
-<script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-edit-image.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-image-preview.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const maxImageCount = 5;
+    const maxFileCount = 10;
 
     const uploader = document.querySelector("[data-post-image-uploader]");
     const imageInput = document.querySelector("#new-post-image");
     const emptyMessage = document.querySelector("#post-image-empty");
     const mainPreview = document.querySelector("#post-main-preview");
+    const dynamicMediaView = document.querySelector("#dynamic-media-view");
     const thumbnailList = document.querySelector("#post-thumbnail-list");
     const imageCount = document.querySelector("#post-image-count");
 
@@ -200,12 +192,16 @@
 
     let selectedFiles = [];
     let currentImageIndex = 0;
-    let currentPreviewUrl = null; // 메모리 누수 및 즉시 해제 방지용 변수
+    let currentPreviewUrl = null;
 
     function renderMainPreview(index) {
       if (selectedFiles.length === 0) {
         emptyMessage.style.display = "flex";
         mainPreview.hidden = true;
+        if (dynamicMediaView) {
+          dynamicMediaView.style.display = "none";
+          dynamicMediaView.innerHTML = "";
+        }
         mainPreview.removeAttribute("src");
         if (prevBtn) prevBtn.style.display = "none";
         if (nextBtn) nextBtn.style.display = "none";
@@ -220,21 +216,39 @@
 
       const file = selectedFiles[index];
 
-      // 이전 URL 해제
       if (currentPreviewUrl) {
         URL.revokeObjectURL(currentPreviewUrl);
       }
 
       currentPreviewUrl = URL.createObjectURL(file);
-
-      mainPreview.src = currentPreviewUrl;
-      mainPreview.hidden = false;
       emptyMessage.style.display = "none";
 
-      // '현재 번호 / 총 개수' 형식 갱신
+      const fileNameLower = file.name.toLowerCase();
+      const isVideo = file.type.startsWith("video/") || fileNameLower.endsWith(".webm") || fileNameLower.endsWith(".mp4") || fileNameLower.endsWith(".mov");
+      const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif");
+      const isAudio = file.type.startsWith("audio/") || fileNameLower.endsWith(".mp3") || fileNameLower.endsWith(".wav");
+
+      mainPreview.hidden = true;
+      if (dynamicMediaView) {
+        dynamicMediaView.style.display = "flex";
+
+        if (isImage) {
+          dynamicMediaView.innerHTML = `<img src="${currentPreviewUrl}" alt="${file.name}" style="max-width: 100%; max-height: 350px; object-fit: contain; border-radius: 8px;">`;
+        } else if (isVideo) {
+          dynamicMediaView.innerHTML = `<video src="${currentPreviewUrl}" controls preload="metadata" style="max-width: 100%; max-height: 350px; background: #000; border-radius: 8px;"></video>`;
+          const videoElement = dynamicMediaView.querySelector("video");
+          if (videoElement) {
+            videoElement.currentTime = 0.1;
+          }
+        } else if (isAudio) {
+          dynamicMediaView.innerHTML = `<div class="text-center p-3"><i class="bi bi-file-earmark-music display-4 mb-2"></i><p class="mb-2">${file.name}</p><audio src="${currentPreviewUrl}" controls class="w-100"></audio></div>`;
+        } else {
+          dynamicMediaView.innerHTML = `<div class="text-center p-3"><i class="bi bi-file-earmark-fill display-4 mb-2"></i><p class="mb-1"><strong>${file.name}</strong></p><small class="text-muted">파일이 정상적으로 등록되었습니다.</small></div>`;
+        }
+      }
+
       imageCount.textContent = `${currentImageIndex + 1} / ${selectedFiles.length}`;
 
-      // 이미지가 2장 이상일 때만 좌우 버튼 표시
       if (prevBtn && nextBtn) {
         const hasMultiple = selectedFiles.length > 1;
         prevBtn.style.display = hasMultiple ? "block" : "none";
@@ -257,14 +271,33 @@
           button.classList.add("active");
         }
 
-        const image = document.createElement("img");
-        const thumbnailUrl = URL.createObjectURL(file);
-        image.src = thumbnailUrl;
-        image.alt = file.name;
-        image.style.width = "60px";
-        image.style.height = "60px";
-        image.style.objectFit = "cover";
-        image.style.borderRadius = "4px";
+        const fileNameLower = file.name.toLowerCase();
+        const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif");
+        const isVideo = file.type.startsWith("video/") || fileNameLower.endsWith(".webm") || fileNameLower.endsWith(".mp4") || fileNameLower.endsWith(".mov");
+
+        if (isImage) {
+          const image = document.createElement("img");
+          image.src = URL.createObjectURL(file);
+          image.alt = file.name;
+          image.style.width = "60px";
+          image.style.height = "60px";
+          image.style.objectFit = "cover";
+          image.style.borderRadius = "4px";
+          button.append(image);
+        } else {
+          const iconDiv = document.createElement("div");
+          iconDiv.className = "bg-secondary text-white d-flex align-items-center justify-content-center";
+          iconDiv.style.width = "60px";
+          iconDiv.style.height = "60px";
+          iconDiv.style.borderRadius = "4px";
+
+          if (isVideo) {
+            iconDiv.innerHTML = '<i class="bi bi-file-earmark-play-fill fs-4"></i>';
+          } else {
+            iconDiv.innerHTML = '<i class="bi bi-file-earmark-fill fs-4"></i>';
+          }
+          button.append(iconDiv);
+        }
 
         button.addEventListener("click", () => {
           renderMainPreview(index);
@@ -292,7 +325,6 @@
           renderThumbnails();
         });
 
-        button.append(image);
         item.append(button);
         item.append(removeButton);
         thumbnailList.append(item);
@@ -307,7 +339,6 @@
       imageInput.files = dataTransfer.files;
     }
 
-    // 왼쪽 화살표 클릭 이벤트
     if (prevBtn) {
       prevBtn.addEventListener("click", () => {
         if (selectedFiles.length <= 1) return;
@@ -317,7 +348,6 @@
       });
     }
 
-    // 오른쪽 화살표 클릭 이벤트
     if (nextBtn) {
       nextBtn.addEventListener("click", () => {
         if (selectedFiles.length <= 1) return;
@@ -331,21 +361,37 @@
       const newFiles = Array.from(imageInput.files);
       imageInput.value = "";
 
-      const imageFiles = newFiles.filter((file) => {
-        return file.type === "image/jpeg" || file.type === "image/png";
+      // 🚫 보안상 차단할 확장자 목록 (.exe, .zip 등)
+      const blockedExtensions = [".exe", ".zip", ".bat", ".cmd", ".sh", ".jar", ".msi", ".iso", ".dmg"];
+
+      const validFiles = [];
+      let hasBlockedFile = false;
+
+      newFiles.forEach(file => {
+        const fileNameLower = file.name.toLowerCase();
+        const isBlocked = blockedExtensions.some(ext => fileNameLower.endsWith(ext));
+        if (isBlocked) {
+          hasBlockedFile = true;
+        } else {
+          validFiles.push(file);
+        }
       });
 
-      if (imageFiles.length !== newFiles.length) {
-        alert("JPG 또는 PNG 이미지만 선택할 수 있습니다.");
+      if (hasBlockedFile) {
+        alert("보안상 `.exe`, `.zip` 등의 실행 파일 및 압축 파일은 업로드할 수 없습니다. (해당 파일은 제외됨)");
       }
 
-      const remainingCount = maxImageCount - selectedFiles.length;
-
-      if (imageFiles.length > remainingCount) {
-        alert(`이미지는 최대 ${maxImageCount}장까지 선택할 수 있습니다.`);
+      if (validFiles.length === 0) {
+        return;
       }
 
-      const filesToAdd = imageFiles.slice(0, remainingCount);
+      const remainingCount = maxFileCount - selectedFiles.length;
+
+      if (validFiles.length > remainingCount) {
+        alert(`파일은 최대 ${maxFileCount}개까지만 선택할 수 있습니다.`);
+      }
+
+      const filesToAdd = validFiles.slice(0, remainingCount);
 
       if (filesToAdd.length > 0) {
         selectedFiles = [...selectedFiles, ...filesToAdd];
@@ -408,5 +454,11 @@
     return true;
   }
 </script>
+
+<script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
 </html>

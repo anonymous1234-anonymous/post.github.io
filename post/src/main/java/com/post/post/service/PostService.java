@@ -10,6 +10,7 @@ import com.post.post.dto.PostImageDto;
 import com.post.post.mapper.PostMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional; // 트랜잭션 추가
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -36,53 +37,52 @@ public class PostService {
     }
 
     /**
-     * 게시글 등록 (검증 + 저장 + 파일 업로드)
+     * 게시글 등록 (검증 + 저장 + 미디어 파일 업로드)
      */
-    public void save(PostDto postDto, List<MultipartFile> imageFiles) throws IOException {
-        // 1. PostValidator를 통한 파일 검증
-        postValidator.validateSave(imageFiles);
+    @Transactional // 쓰기 작업이므로 트랜잭션 활성화
+    public void save(PostDto postDto, List<MultipartFile> mediaFiles) throws IOException {
+        // 1. PostValidator를 통한 미디어 파일 검증 (이미지 + 오디오 + 비디오 허용 확인)
+        postValidator.validateSave(mediaFiles);
 
         // 2. 게시글 기본 정보 저장 (DB Insert 후 PK 생성)
         postMapper.save(postDto);
         Long postId = postDto.getPostId();
 
-        // 3. 첨부파일 업로드 및 이미지 정보 DB 저장 (2단계 처리)
-        if (imageFiles != null && !imageFiles.isEmpty()) {
-            int imageOrder = 0; // 이미지 순서 처리용
-            for (MultipartFile file : imageFiles) {
+        // 3. 첨부파일 업로드 및 미디어 정보 DB 저장
+        if (mediaFiles != null && !mediaFiles.isEmpty()) {
+            int fileOrder = 0;
+            for (MultipartFile file : mediaFiles) {
                 if (file.isEmpty()) continue;
 
-                // 세 번째 인자로 웹 프리픽스 경로를 전달합니다 (예: "/uploads/post")
+                // 서버 디스크에 파일 저장
                 SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "/uploads/post");
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(savedFile.getOriginalName())
-                        .uploadPath(savedFile.getPath()) // savedFile.getPath()는 "/uploads/post/uuid파일명.png" 형태를 반환합니다.
-                        .imageOrder(imageOrder++)
+                        .uploadPath(savedFile.getPath())
+                        .imageOrder(fileOrder++)
                         .build();
 
-
-                // ① IMAGE_UPLOAD 테이블에 저장 (useGeneratedKeys로 uploadId가 imageDto에 담김)
                 postMapper.saveImage(imageDto);
-                Long uploadId = imageDto.getUploadId(); // 생성된 PK 획득
+                Long uploadId = imageDto.getUploadId();
 
-                // ② POST_UPLOAD 관계 테이블에 매핑 저장
                 postMapper.savePostImage(postId, uploadId);
             }
         }
     }
 
     /**
-     * 게시글 수정 (정보 수정 + 기존 이미지 삭제 + 새 이미지 추가)
+     * 게시글 수정 (정보 수정 + 기존 미디어 삭제 + 새 미디어 추가)
      */
-    public void update(PostDto postDto, List<Long> deleteImageIds, List<MultipartFile> imageFiles) throws IOException {
+    @Transactional // 쓰기 작업이므로 트랜잭션 활성화
+    public void update(PostDto postDto, List<Long> deleteImageIds, List<MultipartFile> mediaFiles) throws IOException {
         Long postId = postDto.getPostId();
 
         // 1. 기존 이미지 목록 조회
         List<PostImageDto> existingImages = postMapper.findImagesByPostId(postId);
 
         // 2. PostValidator를 통한 수정 파일 검증
-        postValidator.validateUpdate(existingImages, deleteImageIds, imageFiles);
+        postValidator.validateUpdate(existingImages, deleteImageIds, mediaFiles);
 
         // 3. 게시글 기본 정보 업데이트
         postMapper.update(postDto);
@@ -95,18 +95,17 @@ public class PostService {
             }
         }
 
-        // 5. 새 이미지 업로드 및 저장
-        if (imageFiles != null && !imageFiles.isEmpty()) {
-            // 현재 남아있는 이미지 개수를 고려해 order 시작값 지정 가능
+        // 5. 새 미디어 업로드 및 저장
+        if (mediaFiles != null && !mediaFiles.isEmpty()) {
             int imageOrder = existingImages.size();
-            for (MultipartFile file : imageFiles) {
+            for (MultipartFile file : mediaFiles) {
                 if (file.isEmpty()) continue;
 
                 SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "/uploads/post");
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(savedFile.getOriginalName())
-                        .uploadPath(savedFile.getPath()) // savedFile.getPath()는 "/uploads/post/uuid파일명.png" 형태를 반환합니다.
+                        .uploadPath(savedFile.getPath())
                         .imageOrder(imageOrder++)
                         .build();
 
@@ -149,6 +148,7 @@ public class PostService {
         deleteById(postId);
     }
 
+    @Transactional
     public void deleteById(Long postId) {
         postMapper.deleteById(postId);
     }

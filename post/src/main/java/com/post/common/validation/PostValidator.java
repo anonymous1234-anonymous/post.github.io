@@ -8,52 +8,52 @@ import java.util.List;
 @Component
 public class PostValidator {
 
-    private static final int MAX_IMAGE_COUNT = 5;
+    private static final int MAX_FILE_COUNT = 5;
 
     /**
-     * 게시글 등록 시 파일 검증
+     * 게시글 등록 시 파일 검증 (모든 파일 형식 허용)
      */
-    public void validateSave(List<MultipartFile> imageFiles) {
-        checkFileLimit(0, imageFiles);
-        checkFileExtensions(imageFiles);
+    public void validateSave(List<MultipartFile> files) {
+        checkFileLimit(0, files);
     }
 
     /**
-     * 게시글 수정 시 파일 검증
+     * 게시글 수정 시 파일 검증 (모든 파일 형식 허용)
      */
-    public void validateUpdate(List<PostImageDto> existingImages, List<Long> deleteImageIds, List<MultipartFile> imageFiles) {
+    public void validateUpdate(List<PostImageDto> existingImages, List<Long> deleteImageIds, List<MultipartFile> files) {
         int deleteCount = (deleteImageIds == null) ? 0 : deleteImageIds.size();
         int remainingCount = existingImages.size() - deleteCount;
 
-        checkFileLimit(remainingCount, imageFiles);
-        checkFileExtensions(imageFiles);
+        checkFileLimit(remainingCount, files);
     }
 
     /**
-     * 이미지 개수 제한 검증 (최대 5장)
+     * 파일 개수 제한 검증 (최대 5개)
      */
-    private void checkFileLimit(int baseCount, List<MultipartFile> imageFiles) {
-        long newImageCount = imageFiles == null
+    private void checkFileLimit(int baseCount, List<MultipartFile> files) {
+        long newFileCount = files == null
                 ? 0
-                : imageFiles.stream().filter(file -> !file.isEmpty()).count();
+                : files.stream().filter(file -> !file.isEmpty()).count();
 
-        if (baseCount + newImageCount > MAX_IMAGE_COUNT) {
-            throw new IllegalArgumentException("이미지는 최대 5장까지 등록할 수 있습니다.");
+        if (baseCount + newFileCount > MAX_FILE_COUNT) {
+            throw new IllegalArgumentException("파일은 최대 5개까지 등록할 수 있습니다.");
         }
     }
+    // 위험한 파일 확장자(실행 파일 등) 차단 검증
 
-    /**
-     * 이미지 확장자 검증 (JPG, PNG만 허용)
-     */
-    private void checkFileExtensions(List<MultipartFile> imageFiles) {
-        if (imageFiles == null) return;
+    private void checkFileExtensions(List<MultipartFile> files) {
+        if (files == null) return;
 
-        for (MultipartFile imageFile : imageFiles) {
-            if (imageFile.isEmpty()) continue;
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) continue;
 
-            String contentType = imageFile.getContentType();
-            if (!"image/jpeg".equals(contentType) && !"image/png".equals(contentType)) {
-                throw new IllegalArgumentException("JPG 또는 PNG 이미지만 등록할 수 있습니다.");
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename != null) {
+                String lowerName = originalFilename.toLowerCase();
+                // .exe, .bat, .sh, .jsp 등 위험한 확장자 차단
+                if (lowerName.endsWith(".exe") || lowerName.endsWith(".bat") || lowerName.endsWith(".sh") || lowerName.endsWith(".jsp")) {
+                    throw new IllegalArgumentException("실행 파일(.exe, .bat 등)은 업로드할 수 없습니다.");
+                }
             }
         }
     }

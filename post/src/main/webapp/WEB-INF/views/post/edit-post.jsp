@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!doctype html>
 <html lang="ko">
 <head>
@@ -36,7 +37,7 @@
 
       <header class="zt-page-header">
         <h1>게시글 수정</h1>
-        <p>사진, 여행 동선, 경비와 태그를 수정합니다.</p>
+        <p>사진, 동영상, 동선, 경비와 태그를 수정합니다.</p>
       </header>
 
       <section class="zt-panel zt-profile-card">
@@ -47,11 +48,11 @@
 
           <input type="hidden" name="postId" value="${post.postId}">
 
-          <!-- 이미지 관리 영역 (좌우 버튼 슬라이더 + 기존 이미지 삭제 + 새 사진 추가) -->
+          <!-- 파일 관리 영역 -->
           <div class="col-lg-6">
             <div class="zt-post-image-uploader" data-post-image-uploader>
 
-              <h2 class="h5 mb-3">등록된 사진 미리보기</h2>
+              <h2 class="h5 mb-3">등록된 파일 미리보기</h2>
               <div class="zt-post-main-preview position-relative">
 
                 <c:choose>
@@ -59,34 +60,44 @@
                     <img id="post-main-preview"
                          class="zt-post-main-image"
                          src="${pageContext.request.contextPath}${post.images[0].uploadPath}"
-                         alt="메인 이미지 미리보기"
+                         alt="메인 파일 미리보기"
                          style="width: 100%; height: 350px; object-fit: cover; border-radius: 8px;">
                   </c:when>
                   <c:otherwise>
                     <div id="post-image-empty" class="zt-post-image-empty" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 350px; background: #f8f9fa; border-radius: 8px;">
-                      <i class="bi bi-images display-5"></i>
-                      <strong>등록된 사진이 없습니다</strong>
+                      <i class="bi bi-folder-x display-5"></i>
+                      <strong>등록된 파일이 없습니다</strong>
                     </div>
                     <img id="post-main-preview"
                          class="zt-post-main-image"
                          src=""
-                         alt="선택한 사진 미리보기"
+                         alt="선택한 파일 미리보기"
                          hidden>
                   </c:otherwise>
                 </c:choose>
 
-                <!-- 좌우 넘기기 버튼 (작성 페이지와 동일한 원형 스타일 적용) -->
+                <!-- 좌우 넘기기 버튼 -->
                 <button type="button" id="post-prev-btn" class="zt-slider-btn zt-prev-btn" style="display: none; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 10; width: 36px; height: 36px; border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white; border: none; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;">❮</button>
                 <button type="button" id="post-next-btn" class="zt-slider-btn zt-next-btn" style="display: none; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10; width: 36px; height: 36px; border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white; border: none; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;">❯</button>
               </div>
 
-              <!-- 기존 등록된 사진들의 삭제 체크박스 리스트 -->
+              <!-- 기존 등록된 파일들의 삭제 체크박스 리스트 -->
               <div class="mt-3">
-                <p class="mb-2 text-muted small"><i class="bi bi-check2-square"></i> 삭제할 기존 사진을 선택하세요:</p>
+                <p class="mb-2 text-muted small"><i class="bi bi-check2-square"></i> 삭제할 기존 파일을 선택하세요:</p>
                 <div class="d-flex flex-wrap gap-2">
                   <c:forEach var="image" items="${post.images}" varStatus="status">
                     <div class="position-relative border p-1 rounded text-center" style="width: 70px;">
-                      <img src="${pageContext.request.contextPath}${image.uploadPath}" alt="썸네일" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                      <c:set var="path" value="${image.uploadPath}" />
+                      <c:choose>
+                        <c:when test="${fn:endsWith(fn:toLowerCase(path), '.jpg') || fn:endsWith(fn:toLowerCase(path), '.jpeg') || fn:endsWith(fn:toLowerCase(path), '.png') || fn:endsWith(fn:toLowerCase(path), '.gif') || fn:endsWith(fn:toLowerCase(path), '.webp')}">
+                          <img src="${pageContext.request.contextPath}${image.uploadPath}" alt="썸네일" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                        </c:when>
+                        <c:otherwise>
+                          <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border-radius: 4px;">
+                            <i class="bi bi-file-earmark-fill"></i>
+                          </div>
+                        </c:otherwise>
+                      </c:choose>
                       <div class="form-check d-flex justify-content-center mt-1">
                         <input class="form-check-input" type="checkbox" name="deleteImageIds" value="${image.uploadId}" id="del-${image.uploadId}">
                       </div>
@@ -95,16 +106,15 @@
                 </div>
               </div>
 
-              <!-- 새 사진 추가 영역 -->
+              <!-- 새 파일 추가 영역 (accept 제한 해제) -->
               <div class="mt-4">
-                <label class="form-label" for="edit-post-images">새 사진 추가</label>
+                <label class="form-label" for="edit-post-images">새 파일 추가</label>
                 <input id="edit-post-images"
                        name="imageFiles"
                        class="form-control"
                        type="file"
-                       accept="image/jpeg,image/png"
                        multiple>
-                <small class="zt-muted d-block mt-2">기존 사진과 새 사진을 합쳐 최대 5장까지 등록할 수 있습니다.</small>
+                <small class="zt-muted d-block mt-2">기존 파일과 새 파일을 합쳐 최대 10개까지 등록할 수 있습니다.</small>
               </div>
 
             </div>
@@ -117,7 +127,7 @@
               <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="여행 제목" value="${post.title}" required>
             </div>
             <div class="mb-3">
-              <label class="form-label" for="post-place">여행 장소</label>
+              <label class="form-label" for="post-place">장소</label>
               <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 망원동" value="${post.place}" required>
             </div>
             <div class="mb-3">
@@ -126,7 +136,7 @@
                         name="content"
                         class="form-control"
                         rows="8"
-                        placeholder="여행 내용을 적어 주세요."
+                        placeholder="내용을 적어 주세요."
                         required>${post.content}</textarea>
             </div>
 
@@ -183,7 +193,7 @@
 
 <script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-edit-image.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-image-preview.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>

@@ -5,8 +5,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="나만의 일기 메인">
-  <title>나만의 일기 | post</title>
+  <meta name="description" content="나만의 게시물 메인">
+  <title>나만의 게시물 | post</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
@@ -43,7 +43,7 @@
       <!-- 상단 타이틀 영역 -->
       <div class="text-center mb-4">
         <h2 class="fw-bold">post</h2>
-        <p class="text-muted">나만의 일기</p>
+        <p class="text-muted">나만의 게시물 </p>
       </div>
 
       <!-- 검색 및 정렬 바 -->
@@ -104,8 +104,7 @@
 </div>
 
 <script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-edit-image.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-image-preview.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
