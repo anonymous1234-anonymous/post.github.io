@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const maxImageCount = 5;
+    const maxImageCount = 10;
 
     const uploader = document.querySelector("[data-post-image-uploader]");
     const imageInput = document.querySelector("#new-post-image");

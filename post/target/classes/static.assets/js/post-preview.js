@@ -1,15 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const maxFileCount = 10; // 👈 10개 제한
+    const maxFileCount = 10;
 
     const uploader = document.querySelector("[data-post-image-uploader]");
     const imageInput = document.querySelector("#new-post-image");
     const emptyMessage = document.querySelector("#post-image-empty");
     const mainPreview = document.querySelector("#post-main-preview");
     const thumbnailList = document.querySelector("#post-thumbnail-list");
-    const imageCount = document.querySelector("#post-image-count"); // "1 / 10" 표시용
+    const imageCount = document.querySelector("#post-image-count");
 
     const prevBtn = document.querySelector("#post-prev-btn");
     const nextBtn = document.querySelector("#post-next-btn");
+    const form = document.querySelector("form");
 
     if (!uploader || !imageInput || !emptyMessage || !mainPreview || !thumbnailList || !imageCount) {
         return;
@@ -19,13 +20,27 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentImageIndex = 0;
     let currentPreviewUrl = null;
 
+    const container = mainPreview.parentElement;
+    let mediaElement = container.querySelector("#dynamic-media-view");
+
+    // dynamic-media-view 안전하게 확보 및 스타일 정렬 (absolute 제거로 버튼 클릭 방해 방지)
+    if (!mediaElement) {
+        mediaElement = document.createElement("div");
+        mediaElement.id = "dynamic-media-view";
+        mediaElement.style.cssText = "width: 100%; height: 100%; display: none; align-items: center; justify-content: center;";
+        container.insertBefore(mediaElement, mainPreview);
+    } else {
+        mediaElement.style.position = "static";
+        mediaElement.style.width = "100%";
+        mediaElement.style.height = "100%";
+    }
+
     function renderMainPreview(index) {
         if (selectedFiles.length === 0) {
             emptyMessage.style.display = "flex";
             mainPreview.hidden = true;
-            mainPreview.removeAttribute("src");
-            const existingMedia = mainPreview.parentElement.querySelector("#dynamic-media-view");
-            if (existingMedia) existingMedia.style.display = "none";
+            mediaElement.style.display = "none";
+            mediaElement.innerHTML = "";
             if (prevBtn) prevBtn.style.display = "none";
             if (nextBtn) nextBtn.style.display = "none";
             imageCount.textContent = "0";
@@ -34,6 +49,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (index >= selectedFiles.length) {
             index = selectedFiles.length - 1;
+        }
+        if (index < 0) {
+            index = 0;
         }
         currentImageIndex = index;
 
@@ -45,39 +63,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
         currentPreviewUrl = URL.createObjectURL(file);
         emptyMessage.style.display = "none";
-
-        const container = mainPreview.parentElement;
-        let mediaElement = container.querySelector("#dynamic-media-view");
-
-        if (!mediaElement) {
-            mediaElement = document.createElement("div");
-            mediaElement.id = "dynamic-media-view";
-            mediaElement.style.width = "100%";
-            mediaElement.style.height = "100%";
-            mediaElement.style.display = "flex";
-            mediaElement.style.alignItems = "center";
-            mediaElement.style.justifyContent = "center";
-            container.appendChild(mediaElement);
-        }
-
-        mainPreview.hidden = true;
         mediaElement.style.display = "flex";
+        mainPreview.hidden = true;
 
         const fileNameLower = file.name.toLowerCase();
-        // 💡 확장자와 타입 모두 체크하여 .webm 같은 파일도 완벽하게 동영상으로 인식하도록 수정
         const isVideo = file.type.startsWith("video/") || fileNameLower.endsWith(".webm") || fileNameLower.endsWith(".mp4") || fileNameLower.endsWith(".mov");
         const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif");
         const isAudio = file.type.startsWith("audio/") || fileNameLower.endsWith(".mp3") || fileNameLower.endsWith(".wav");
 
         if (isImage) {
-            mediaElement.innerHTML = `<img src="${currentPreviewUrl}" alt="${file.name}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;">`;
+            mediaElement.innerHTML = `<img src="${currentPreviewUrl}" alt="${file.name}" style="max-width: 100%; max-height: 250px; width: auto; height: auto; object-fit: contain; border-radius: 8px;">`;
         } else if (isVideo) {
-            // 💡 동영상 첫 프레임을 미리 보여주기 위해 preload="metadata" 추가
-            mediaElement.innerHTML = `<video src="${currentPreviewUrl}" controls preload="metadata" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px; background: #000;"></video>`;
+            mediaElement.innerHTML = `<video src="${currentPreviewUrl}" controls preload="metadata" style="max-width: 100%; max-height: 250px; width: 100%; height: auto; object-fit: contain; border-radius: 8px; background: #000;"></video>`;
             const videoEl = mediaElement.querySelector("video");
-            if (videoEl) {
-                videoEl.currentTime = 0.1; // 첫 화면 프레임 강제 로드
-            }
+            if (videoEl) videoEl.currentTime = 0.1;
         } else if (isAudio) {
             mediaElement.innerHTML = `<div class="text-center p-4"><i class="bi bi-file-earmark-music display-4 mb-2"></i><p>${file.name}</p><audio src="${currentPreviewUrl}" controls class="w-100"></audio></div>`;
         } else {
@@ -86,10 +85,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         imageCount.textContent = `${currentImageIndex + 1} / ${selectedFiles.length}`;
 
+        // 양옆 버튼 가시성 제어 및 클릭 방해 방지를 위한 z-index 부여
         if (prevBtn && nextBtn) {
             const hasMultiple = selectedFiles.length > 1;
             prevBtn.style.display = hasMultiple ? "block" : "none";
             nextBtn.style.display = hasMultiple ? "block" : "none";
+            prevBtn.style.zIndex = "30";
+            nextBtn.style.zIndex = "30";
         }
     }
 
@@ -150,11 +152,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (currentImageIndex >= selectedFiles.length) {
                     currentImageIndex = Math.max(0, selectedFiles.length - 1);
-                } else if (index < currentImageIndex) {
-                    currentImageIndex--;
                 }
 
-                updateImageInput();
                 renderMainPreview(currentImageIndex);
                 renderThumbnails();
             });
@@ -165,63 +164,45 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function updateImageInput() {
-        const dataTransfer = new DataTransfer();
-        selectedFiles.forEach((file) => {
-            dataTransfer.items.add(file);
-        });
-        imageInput.files = dataTransfer.files;
-    }
-
+    // 좌측 이동 버튼 이벤트
     if (prevBtn) {
-        prevBtn.addEventListener("click", () => {
+        prevBtn.onclick = (e) => {
+            e.preventDefault();
             if (selectedFiles.length <= 1) return;
             currentImageIndex = (currentImageIndex - 1 + selectedFiles.length) % selectedFiles.length;
             renderMainPreview(currentImageIndex);
             renderThumbnails();
-        });
+        };
     }
 
+    // 우측 이동 버튼 이벤트
     if (nextBtn) {
-        nextBtn.addEventListener("click", () => {
+        nextBtn.onclick = (e) => {
+            e.preventDefault();
             if (selectedFiles.length <= 1) return;
             currentImageIndex = (currentImageIndex + 1) % selectedFiles.length;
             renderMainPreview(currentImageIndex);
             renderThumbnails();
-        });
+        };
     }
+
     imageInput.addEventListener("change", () => {
         const newFiles = Array.from(imageInput.files);
         imageInput.value = "";
 
-        // 🚫 보안상 차단할 확장자 목록
         const blockedExtensions = [".exe", ".zip", ".bat", ".cmd", ".sh", ".jar", ".msi", ".iso", ".dmg"];
-
-        // 1. 허용된 파일과 차단된 파일 분리
-        const validFiles = [];
-        let hasBlockedFile = false;
-
-        newFiles.forEach(file => {
+        const validFiles = newFiles.filter(file => {
             const fileNameLower = file.name.toLowerCase();
-            const isBlocked = blockedExtensions.some(ext => fileNameLower.endsWith(ext));
-            if (isBlocked) {
-                hasBlockedFile = true;
-            } else {
-                validFiles.push(file);
-            }
+            return !blockedExtensions.some(ext => fileNameLower.endsWith(ext));
         });
 
-        // 차단된 파일이 있었다면 경고 메시지 출력
-        if (hasBlockedFile) {
-            alert("보안상 `.exe`, `.zip` 등의 실행 파일 및 압축 파일은 업로드할 수 없습니다. (해당 파일은 제외됨)");
+        if (validFiles.length < newFiles.length) {
+            alert("보안상 실행 및 압축 파일은 업로드할 수 없습니다.");
         }
 
-        if (validFiles.length === 0) {
-            return;
-        }
+        if (validFiles.length === 0) return;
 
         const remainingCount = maxFileCount - selectedFiles.length;
-
         if (validFiles.length > remainingCount) {
             alert(`파일은 최대 ${maxFileCount}개까지만 선택할 수 있습니다.`);
         }
@@ -230,10 +211,80 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (filesToAdd.length > 0) {
             selectedFiles = [...selectedFiles, ...filesToAdd];
-            updateImageInput();
-
             renderMainPreview(currentImageIndex);
             renderThumbnails();
         }
     });
+
+    // 폼 제출 로직 (오류 문법 정리 완료)
+    if (form) {
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const submitBtn = form.querySelector("button[type='submit']");
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+                let savedFileNames = [];
+
+                for (const file of selectedFiles) {
+                    const CHUNK_SIZE = 5 * 1024 * 1024;
+                    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                    const fileUid = self.crypto.randomUUID();
+
+                    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                        const start = chunkIndex * CHUNK_SIZE;
+                        const end = Math.min(start + CHUNK_SIZE, file.size);
+                        const chunk = file.slice(start, end);
+
+                        const formData = new FormData();
+                        formData.append("file", chunk);
+                        formData.append("fileUid", fileUid);
+                        formData.append("originalName", file.name);
+                        formData.append("chunkIndex", chunkIndex);
+                        formData.append("totalChunks", totalChunks);
+
+                        const chunkRes = await fetch('${pageContext.request.contextPath}/api/posts/upload-chunk', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const chunkResult = await chunkRes.json();
+                        if (chunkResult.data && chunkResult.data.completed) {
+                            savedFileNames.push(chunkResult.data.savedFileName);
+                        }
+                    }
+                }
+
+                const postData = {
+                    title: form.querySelector('#post-title').value,
+                    place: form.querySelector('#post-place').value,
+                    content: form.querySelector('#post-content').value,
+                    transportCost: form.querySelector('#transport-cost').value,
+                    foodCost: form.querySelector('#food-cost').value,
+                    otherCost: form.querySelector('#other-cost').value,
+                    savedFileNames: savedFileNames
+                };
+
+                const finalRes = await fetch('${pageContext.request.contextPath}/new-post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(postData)
+                });
+
+                if (finalRes.ok) {
+                    alert("게시글이 성공적으로 등록되었습니다!");
+                    location.href = "${pageContext.request.contextPath}/home";
+                } else {
+                    alert("게시글 등록에 실패했습니다.");
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+
+            } catch (error) {
+                console.error("업로드 중 오류 발생:", error);
+                alert("오류가 발생했습니다. 다시 시도해주세요.");
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
 });

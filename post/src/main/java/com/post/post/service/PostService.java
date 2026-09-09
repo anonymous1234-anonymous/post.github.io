@@ -5,16 +5,21 @@ import com.post.common.response.PageResponse;
 import com.post.common.util.FileUploadUtil;
 import com.post.common.util.SavedFile;
 import com.post.common.validation.PostValidator;
+import com.post.post.dto.ChunkUploadDto; // 추가됨
 import com.post.post.dto.PostDto;
 import com.post.post.dto.PostImageDto;
 import com.post.post.mapper.PostMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // 트랜잭션 추가
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File; // 추가됨
+import java.io.FileOutputStream; // 추가됨
 import java.io.IOException;
+import java.nio.file.Files; // 추가됨
 import java.util.List;
+import java.util.UUID; // 추가됨
 
 @Service
 public class PostService {
@@ -25,6 +30,10 @@ public class PostService {
 
     @Value("${file.upload-dir.post}")
     private String postUploadDir;
+
+    // 임시 저장 경로 및 최종 저장 경로 (운영 환경에 맞게 경로 수정 가능)
+    private final String TEMP_DIR = "C:/post/uploads/";
+    private final String FINAL_DIR = "C:/post/uploads/";
 
     public PostService(
             PostMapper postMapper,
@@ -37,24 +46,72 @@ public class PostService {
     }
 
     /**
-     * 게시글 등록 (검증 + 저장 + 미디어 파일 업로드)
+     * 대용량 파일 청크(조각) 저장 및 병합 로직
      */
-    @Transactional // 쓰기 작업이므로 트랜잭션 활성화
+    public String processChunkUpload(ChunkUploadDto dto) throws IOException {
+        File tempDir = new File(TEMP_DIR + dto.getFileUid());
+        if (!tempDir.exists()) {
+            tempDir.mkdirs();
+        }
+
+        // 1. 현재 조각 파일을 임시 폴더에 저장
+        File chunkFile = new File(tempDir, "chunk_" + dto.getChunkIndex());
+        dto.getFile().transferTo(chunkFile);
+
+        // 2. 모든 조각이 도착했는지 확인
+        boolean isAllUploaded = true;
+        for (int i = 0; i < dto.getTotalChunks(); i++) {
+            File f = new File(tempDir, "chunk_" + i);
+            if (!f.exists()) {
+                isAllUploaded = false;
+                break;
+            }
+        }
+
+        // 3. 모든 조각이 다 도착했다면 하나로 병합 (Merge)
+        if (isAllUploaded) {
+            String savedFileName = UUID.randomUUID().toString() + "_" + dto.getOriginalName();
+            File finalDirFile = new File(FINAL_DIR);
+            if (!finalDirFile.exists()) {
+                finalDirFile.mkdirs();
+            }
+
+            File finalFile = new File(FINAL_DIR + savedFileName);
+
+            try (FileOutputStream fos = new FileOutputStream(finalFile, true)) {
+                for (int i = 0; i < dto.getTotalChunks(); i++) {
+                    File f = new File(tempDir, "chunk_" + i);
+                    Files.copy(f.toPath(), fos);
+                    f.delete(); // 조각 파일 삭제
+                }
+            }
+
+            // 임시 디렉토리 삭제
+            tempDir.delete();
+
+            // 병합된 최종 파일명 리턴
+            return savedFileName;
+        }
+
+        // 아직 모든 조각이 오지 않았음
+        return null;
+    }
+
+    /**
+     * 게시글 등록 (검증 + 저장 + 미디어 파일 업로드) - 기존 일반 업로드용
+     */
+    @Transactional
     public void save(PostDto postDto, List<MultipartFile> mediaFiles) throws IOException {
-        // 1. PostValidator를 통한 미디어 파일 검증 (이미지 + 오디오 + 비디오 허용 확인)
         postValidator.validateSave(mediaFiles);
 
-        // 2. 게시글 기본 정보 저장 (DB Insert 후 PK 생성)
         postMapper.save(postDto);
         Long postId = postDto.getPostId();
 
-        // 3. 첨부파일 업로드 및 미디어 정보 DB 저장
         if (mediaFiles != null && !mediaFiles.isEmpty()) {
             int fileOrder = 0;
             for (MultipartFile file : mediaFiles) {
                 if (file.isEmpty()) continue;
 
-                // 서버 디스크에 파일 저장
                 SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "/uploads/post");
 
                 PostImageDto imageDto = PostImageDto.builder()
@@ -72,30 +129,52 @@ public class PostService {
     }
 
     /**
-     * 게시글 수정 (정보 수정 + 기존 미디어 삭제 + 새 미디어 추가)
+     * [추가] 청크 업로드 완료된 파일 이름 리스트를 받아 게시글 등록 처리
      */
-    @Transactional // 쓰기 작업이므로 트랜잭션 활성화
+    @Transactional
+    public void saveWithFiles(PostDto postDto, List<String> savedFileNames) {
+        // 1. 게시글 기본 정보 저장
+        postMapper.save(postDto);
+        Long postId = postDto.getPostId();
+
+        // 2. 이미 서버에 병합된 파일들의 정보를 DB에 기록
+        if (savedFileNames != null && !savedFileNames.isEmpty()) {
+            int fileOrder = 0;
+            for (String savedFileName : savedFileNames) {
+                // 원본 이름과 저장된 경로 매핑 (필요에 따라 DTO 구조에 맞게 조절)
+                PostImageDto imageDto = PostImageDto.builder()
+                        .originName(savedFileName.substring(savedFileName.indexOf("_") + 1)) // UUID 제거 후 원본명 복원 혹은 그대로 저장
+                        .uploadPath("/uploads/post/" + savedFileName)
+                        .imageOrder(fileOrder++)
+                        .build();
+
+                postMapper.saveImage(imageDto);
+                Long uploadId = imageDto.getUploadId();
+
+                postMapper.savePostImage(postId, uploadId);
+            }
+        }
+    }
+
+    /**
+     * 게시글 수정 (정보 수정 + 기존 미디어 삭제 + 새 미디어 추가) - 기존 일반 수정용
+     */
+    @Transactional
     public void update(PostDto postDto, List<Long> deleteImageIds, List<MultipartFile> mediaFiles) throws IOException {
         Long postId = postDto.getPostId();
 
-        // 1. 기존 이미지 목록 조회
         List<PostImageDto> existingImages = postMapper.findImagesByPostId(postId);
-
-        // 2. PostValidator를 통한 수정 파일 검증
         postValidator.validateUpdate(existingImages, deleteImageIds, mediaFiles);
 
-        // 3. 게시글 기본 정보 업데이트
         postMapper.update(postDto);
 
-        // 4. 삭제 대상 이미지 처리 (POST_UPLOAD 관계 먼저 끊고, IMAGE_UPLOAD 삭제)
         if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
             for (Long uploadId : deleteImageIds) {
-                postMapper.deleteByPostIdAndUploadId(postId, uploadId); // 관계 테이블 삭제
-                postMapper.deleteImage(uploadId); // 이미지 본문 테이블 삭제
+                postMapper.deleteByPostIdAndUploadId(postId, uploadId);
+                postMapper.deleteImage(uploadId);
             }
         }
 
-        // 5. 새 미디어 업로드 및 저장
         if (mediaFiles != null && !mediaFiles.isEmpty()) {
             int imageOrder = existingImages.size();
             for (MultipartFile file : mediaFiles) {
@@ -106,6 +185,44 @@ public class PostService {
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(savedFile.getOriginalName())
                         .uploadPath(savedFile.getPath())
+                        .imageOrder(imageOrder++)
+                        .build();
+
+                postMapper.saveImage(imageDto);
+                Long uploadId = imageDto.getUploadId();
+
+                postMapper.savePostImage(postId, uploadId);
+            }
+        }
+    }
+
+    /**
+     * [추가] 청크 업로드를 통해 수정할 때 사용하는 메서드
+     */
+    @Transactional
+    public void updateWithFiles(PostDto postDto, List<Long> deleteImageIds, List<String> savedFileNames) {
+        Long postId = postDto.getPostId();
+
+        // 1. 게시글 기본 정보 업데이트
+        postMapper.update(postDto);
+
+        // 2. 삭제 대상 이미지 처리
+        if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
+            for (Long uploadId : deleteImageIds) {
+                postMapper.deleteByPostIdAndUploadId(postId, uploadId);
+                postMapper.deleteImage(uploadId);
+            }
+        }
+
+        // 3. 새로 업로드된 청크 병합 파일들 추가
+        if (savedFileNames != null && !savedFileNames.isEmpty()) {
+            List<PostImageDto> existingImages = postMapper.findImagesByPostId(postId);
+            int imageOrder = existingImages.size();
+
+            for (String savedFileName : savedFileNames) {
+                PostImageDto imageDto = PostImageDto.builder()
+                        .originName(savedFileName.substring(savedFileName.indexOf("_") + 1))
+                        .uploadPath("/uploads/post/" + savedFileName)
                         .imageOrder(imageOrder++)
                         .build();
 

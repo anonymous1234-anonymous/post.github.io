@@ -31,7 +31,7 @@
   <div class="zt-layout">
 
     <jsp:include page="/WEB-INF/views/components/sidebar.jsp">
-      <jsp:param name="activePage" value="my-travel" />
+      <jsp:param name="activePage" value="new-post" />
     </jsp:include>
 
     <main class="zt-content">
@@ -159,7 +159,6 @@
 </div>
 
 <script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>

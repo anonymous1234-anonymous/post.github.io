@@ -48,12 +48,11 @@
 
           <input type="hidden" name="postId" value="${post.postId}">
 
-          <!-- 파일 관리 영역 -->
           <div class="col-lg-6">
             <div class="zt-post-image-uploader" data-post-image-uploader>
 
               <h2 class="h5 mb-3">등록된 파일 미리보기</h2>
-              <div class="zt-post-main-preview position-relative">
+              <div class="zt-post-main-preview position-relative" style="min-height: 350px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 8px; overflow: hidden;">
 
                 <c:choose>
                   <c:when test="${not empty post.images}">
@@ -61,10 +60,10 @@
                          class="zt-post-main-image"
                          src="${pageContext.request.contextPath}${post.images[0].uploadPath}"
                          alt="메인 파일 미리보기"
-                         style="width: 100%; height: 350px; object-fit: cover; border-radius: 8px;">
+                         style="width: 100%; height: 350px; object-fit: contain;">
                   </c:when>
                   <c:otherwise>
-                    <div id="post-image-empty" class="zt-post-image-empty" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 350px; background: #f8f9fa; border-radius: 8px;">
+                    <div id="post-image-empty" class="zt-post-image-empty text-center p-4">
                       <i class="bi bi-folder-x display-5"></i>
                       <strong>등록된 파일이 없습니다</strong>
                     </div>
@@ -76,12 +75,12 @@
                   </c:otherwise>
                 </c:choose>
 
-                <!-- 좌우 넘기기 버튼 -->
+                <div id="dynamic-media-view" style="width: 100%; height: 100%; display: none; align-items: center; justify-content: center;"></div>
+
                 <button type="button" id="post-prev-btn" class="zt-slider-btn zt-prev-btn" style="display: none; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 10; width: 36px; height: 36px; border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white; border: none; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;">❮</button>
                 <button type="button" id="post-next-btn" class="zt-slider-btn zt-next-btn" style="display: none; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10; width: 36px; height: 36px; border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white; border: none; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;">❯</button>
               </div>
 
-              <!-- 기존 등록된 파일들의 삭제 체크박스 리스트 -->
               <div class="mt-3">
                 <p class="mb-2 text-muted small"><i class="bi bi-check2-square"></i> 삭제할 기존 파일을 선택하세요:</p>
                 <div class="d-flex flex-wrap gap-2">
@@ -93,7 +92,7 @@
                           <img src="${pageContext.request.contextPath}${image.uploadPath}" alt="썸네일" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
                         </c:when>
                         <c:otherwise>
-                          <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border-radius: 4px;">
+                          <div class="bg-secondary text-white d-flex align-items-center justify-content: center;" style="width: 60px; height: 60px; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-file-earmark-fill"></i>
                           </div>
                         </c:otherwise>
@@ -106,29 +105,27 @@
                 </div>
               </div>
 
-              <!-- 새 파일 추가 영역 (accept 제한 해제) -->
               <div class="mt-4">
-                <label class="form-label" for="edit-post-images">새 파일 추가</label>
-                <input id="edit-post-images"
+                <label class="form-label" for="new-post-image">새 파일 추가</label>
+                <input id="new-post-image"
                        name="imageFiles"
                        class="form-control"
                        type="file"
                        multiple>
-                <small class="zt-muted d-block mt-2">기존 파일과 새 파일을 합쳐 최대 10개까지 등록할 수 있습니다.</small>
+                <small class="zt-muted d-block mt-2">새 파일을 추가하면 아래에 미리보기가 반영됩니다.</small>
               </div>
 
             </div>
           </div>
 
-          <!-- 게시글 입력 폼 영역 -->
           <div class="col-lg-6">
             <div class="mb-3">
               <label class="form-label" for="post-title">제목</label>
-              <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="여행 제목" value="${post.title}" required>
+              <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="여행 제목" value="<c:out value='${post.title}'/>" required>
             </div>
             <div class="mb-3">
               <label class="form-label" for="post-place">장소</label>
-              <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 망원동" value="${post.place}" required>
+              <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 망원동" value="<c:out value='${post.place}'/>" required>
             </div>
             <div class="mb-3">
               <label class="form-label" for="post-content">내용</label>
@@ -137,7 +134,7 @@
                         class="form-control"
                         rows="8"
                         placeholder="내용을 적어 주세요."
-                        required>${post.content}</textarea>
+                        required><c:out value="${post.content}"/></textarea>
             </div>
 
             <div class="mb-3">
@@ -147,7 +144,7 @@
                      class="form-control"
                      type="number"
                      min="0"
-                     value="${post.transportCost}"
+                     value="${empty post.transportCost ? 0 : post.transportCost}"
                      required>
             </div>
 
@@ -158,7 +155,7 @@
                      class="form-control"
                      type="number"
                      min="0"
-                     value="${post.foodCost}"
+                     value="${empty post.foodCost ? 0 : post.foodCost}"
                      required>
             </div>
 
@@ -169,7 +166,7 @@
                      class="form-control"
                      type="number"
                      min="0"
-                     value="${post.otherCost}"
+                     value="${empty post.otherCost ? 0 : post.otherCost}"
                      required>
             </div>
 
@@ -191,8 +188,6 @@
   </div>
 </div>
 
-<script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-edit-image.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>

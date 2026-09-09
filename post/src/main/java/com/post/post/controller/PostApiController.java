@@ -1,6 +1,7 @@
 package com.post.post.controller;
 
 import com.post.common.dto.ApiResponse;
+import com.post.post.dto.ChunkUploadDto; // 청크용 DTO 추가 필요
 import com.post.post.dto.PostDto;
 import com.post.post.service.PostService;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +24,6 @@ public class PostApiController {
 
     /**
      * 비동기 게시글 목록 데이터 조회 API
-     * GET /api/posts
      */
     @GetMapping
     public ApiResponse<Map<String, Object>> getPostPage(
@@ -47,37 +47,56 @@ public class PostApiController {
     }
 
     /**
-     * 게시글 등록 API (로그인 없이)
+     * [추가] 대용량 파일 청크(조각) 업로드 API
+     * POST /api/posts/upload-chunk
+     */
+    @PostMapping("/upload-chunk")
+    public ApiResponse<Map<String, Object>> uploadChunk(ChunkUploadDto chunkDto) throws IOException {
+        // 서비스에서 조각을 저장하고, 마지막 조각이면 최종 병합 후 저장된 파일명을 리턴
+        String savedFileName = postService.processChunkUpload(chunkDto);
+
+        Map<String, Object> response = new HashMap<>();
+        if (savedFileName != null) {
+            response.put("completed", true);
+            response.put("savedFileName", savedFileName); // 병합된 최종 파일명
+        } else {
+            response.put("completed", false); // 아직 조각 전송 중
+        }
+
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 게시글 등록 API (청크 업로드 완료 후 최종 호출)
      * POST /api/posts
      */
     @PostMapping
     public ApiResponse<Void> createPost(
-            @RequestPart("com/post/audio/controller") PostDto postDto,
-            @RequestPart(value = "imageFiles", required = false) List<MultipartFile> imageFiles
+            @RequestPart("postDto") PostDto postDto,
+            @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
+            // 파일 객체(MultipartFile) 대신 이미 서버에 업로드/병합된 파일 이름 리스트를 받습니다.
     ) throws IOException {
-        postService.save(postDto, imageFiles);
+        postService.saveWithFiles(postDto, savedFileNames);
         return ApiResponse.success(null);
     }
 
     /**
-     * 게시글 수정 API (로그인 없이)
-
+     * 게시글 수정 API
      */
     @PutMapping("/{postId}")
     public ApiResponse<Void> updatePost(
             @PathVariable Long postId,
-            @RequestPart("com/post/audio/controller") PostDto postDto,
+            @RequestPart("postDto") PostDto postDto,
             @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteImageIds,
-            @RequestPart(value = "imageFiles", required = false) List<MultipartFile> imageFiles
+            @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
     ) throws IOException {
         postDto.setPostId(postId);
-        postService.update(postDto, deleteImageIds, imageFiles);
+        postService.updateWithFiles(postDto, deleteImageIds, savedFileNames);
         return ApiResponse.success(null);
     }
 
     /**
-     * 게시글 삭제 API (로그인 없이)
-     * DELETE /api/posts/{postId}
+     * 게시글 삭제 API
      */
     @DeleteMapping("/{postId}")
     public ApiResponse<Void> deletePost(@PathVariable Long postId) {

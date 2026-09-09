@@ -102,7 +102,7 @@
     </main>
   </div>
 </div>
-
+<script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
