@@ -1,11 +1,11 @@
 package com.post.post.controller;
 
 import com.post.common.dto.ApiResponse;
-import com.post.post.dto.ChunkUploadDto; // 청크용 DTO 추가 필요
+import com.post.post.dto.ChunkDto;
 import com.post.post.dto.PostDto;
 import com.post.post.service.PostService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -23,7 +23,7 @@ public class PostApiController {
     }
 
     /**
-     * 비동기 게시글 목록 데이터 조회 API
+     * 1. 비동기 게시글 목록 데이터 조회 API
      */
     @GetMapping
     public ApiResponse<Map<String, Object>> getPostPage(
@@ -47,41 +47,49 @@ public class PostApiController {
     }
 
     /**
-     * [추가] 대용량 파일 청크(조각) 업로드 API
+     * 2. 대용량 파일 청크(조각) 업로드 API
      * POST /api/posts/upload-chunk
      */
     @PostMapping("/upload-chunk")
-    public ApiResponse<Map<String, Object>> uploadChunk(ChunkUploadDto chunkDto) throws IOException {
-        // 서비스에서 조각을 저장하고, 마지막 조각이면 최종 병합 후 저장된 파일명을 리턴
-        String savedFileName = postService.processChunkUpload(chunkDto);
+    public ResponseEntity<?> uploadChunk(ChunkDto chunkDto) {
+        try {
+            String savedFileName = postService.processChunkUpload(chunkDto);
 
-        Map<String, Object> response = new HashMap<>();
-        if (savedFileName != null) {
-            response.put("completed", true);
-            response.put("savedFileName", savedFileName); // 병합된 최종 파일명
-        } else {
-            response.put("completed", false); // 아직 조각 전송 중
+            Map<String, Object> responseData = new HashMap<>();
+            if (savedFileName != null) {
+                responseData.put("completed", true);
+                responseData.put("savedFileName", savedFileName);
+            } else {
+                responseData.put("completed", false);
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "data", responseData));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
-
-        return ApiResponse.success(response);
     }
 
     /**
-     * 게시글 등록 API (청크 업로드 완료 후 최종 호출)
+     * 3. 최종 글 등록 API (FormData로 넘어오는 postDto와 savedFileNames 받기)
      * POST /api/posts
      */
     @PostMapping
-    public ApiResponse<Void> createPost(
+    public ResponseEntity<?> createPost(
             @RequestPart("postDto") PostDto postDto,
             @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
-            // 파일 객체(MultipartFile) 대신 이미 서버에 업로드/병합된 파일 이름 리스트를 받습니다.
-    ) throws IOException {
-        postService.saveWithFiles(postDto, savedFileNames);
-        return ApiResponse.success(null);
+    ) {
+        try {
+            postService.saveWithFiles(postDto, savedFileNames);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
     }
 
     /**
-     * 게시글 수정 API
+     * 4. 게시글 수정 API
+     * PUT /api/posts/{postId}
      */
     @PutMapping("/{postId}")
     public ApiResponse<Void> updatePost(
@@ -96,7 +104,8 @@ public class PostApiController {
     }
 
     /**
-     * 게시글 삭제 API
+     * 5. 게시글 삭제 API
+     * DELETE /api/posts/{postId}
      */
     @DeleteMapping("/{postId}")
     public ApiResponse<Void> deletePost(@PathVariable Long postId) {

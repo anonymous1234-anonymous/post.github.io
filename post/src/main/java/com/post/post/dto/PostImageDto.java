@@ -3,6 +3,7 @@ package com.post.post.dto;
 import lombok.*;
 
 @Getter
+@Setter
 @NoArgsConstructor
 public class PostImageDto {
 

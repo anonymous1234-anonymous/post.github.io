@@ -18,7 +18,7 @@ public final class PostContentFilter {
 
         if (trimmed.length() < 10) {
             return forMission
-                    ? "미션 인증을 위해 내용을 10자 이상 작성해주세요."
+                    ? "인증을 위해 내용을 10자 이상 작성해주세요."
                     : "내용을 10자 이상 작성해주세요.";
         }
 

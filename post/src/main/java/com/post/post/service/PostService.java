@@ -5,7 +5,7 @@ import com.post.common.response.PageResponse;
 import com.post.common.util.FileUploadUtil;
 import com.post.common.util.SavedFile;
 import com.post.common.validation.PostValidator;
-import com.post.post.dto.ChunkUploadDto;
+import com.post.post.dto.ChunkDto;
 import com.post.post.dto.PostDto;
 import com.post.post.dto.PostImageDto;
 import com.post.post.mapper.PostMapper;
@@ -31,6 +31,8 @@ public class PostService {
     @Value("${file.upload-dir.post}")
     private String postUploadDir;
 
+    private static final String WEB_PREFIX = "/uploads/post";
+
     public PostService(
             PostMapper postMapper,
             FileUploadUtil fileUploadUtil,
@@ -42,10 +44,9 @@ public class PostService {
     }
 
     /**
-     * 대용량 파일 청크(조각) 저장 및 병합 로직 (경로 통일 및 방어 코드 적용)
+     * 대용량 파일 청크(조각) 저장 및 병합 로직 (실제 저장 수행)
      */
-    public String processChunkUpload(ChunkUploadDto dto) throws IOException {
-        // 하드코딩 제거: 설정값(postUploadDir) 기반의 임시 폴더 경로 설정
+    public String processChunkUpload(ChunkDto dto) throws IOException {
         File tempDir = new File(postUploadDir + "/temp/" + dto.getFileUid());
         if (!tempDir.exists()) {
             tempDir.mkdirs();
@@ -55,7 +56,7 @@ public class PostService {
         File chunkFile = new File(tempDir, "chunk_" + dto.getChunkIndex());
         dto.getFile().transferTo(chunkFile);
 
-        // 2. 모든 조각이 도착했는지 확인
+        // 2. 모든 조각이 다 전송되었는지 확인
         boolean isAllUploaded = true;
         for (int i = 0; i < dto.getTotalChunks(); i++) {
             File f = new File(tempDir, "chunk_" + i);
@@ -65,7 +66,7 @@ public class PostService {
             }
         }
 
-        // 3. 모든 조각이 다 도착했다면 하나로 병합 (Merge)
+        // 3. 마지막 조각까지 다 도착했다면 하나로 병합 (Merge)
         if (isAllUploaded) {
             String originName = (dto.getOriginalName() != null) ? dto.getOriginalName() : "unknown";
             String savedFileName = UUID.randomUUID().toString() + "_" + originName;
@@ -81,20 +82,18 @@ public class PostService {
                 for (int i = 0; i < dto.getTotalChunks(); i++) {
                     File f = new File(tempDir, "chunk_" + i);
                     Files.copy(f.toPath(), fos);
-                    f.delete(); // 조각 파일 삭제
+                    f.delete(); // 병합 후 개별 조각 파일 삭제
                 }
             }
 
-            // 임시 디렉토리 폴더 삭제
+            // 임시 폴더 삭제
             if (tempDir.exists()) {
                 tempDir.delete();
             }
 
-            // 병합된 최종 파일명 리턴
             return savedFileName;
         }
 
-        // 아직 모든 조각이 오지 않았음
         return null;
     }
 
@@ -113,7 +112,7 @@ public class PostService {
             for (MultipartFile file : mediaFiles) {
                 if (file.isEmpty()) continue;
 
-                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "/uploads/post");
+                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, WEB_PREFIX);
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(savedFile.getOriginalName())
@@ -134,29 +133,32 @@ public class PostService {
      */
     @Transactional
     public void saveWithFiles(PostDto postDto, List<String> savedFileNames) {
+        // 1. 게시글 저장 (useGeneratedKeys 덕분에 postDto에 postId가 자동 주입됩니다)
         postMapper.save(postDto);
         Long postId = postDto.getPostId();
 
         if (savedFileNames != null && !savedFileNames.isEmpty()) {
             int fileOrder = 0;
             for (String savedFileName : savedFileNames) {
-                // 안전한 파일 이름 파싱 (언더바가 없을 경우 대비)
                 int underscoreIndex = savedFileName.indexOf("_");
                 String originName = (underscoreIndex != -1) ? savedFileName.substring(underscoreIndex + 1) : savedFileName;
+                String uploadPath = WEB_PREFIX + "/" + savedFileName;
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(originName)
-                        .uploadPath("/uploads/post/" + savedFileName)
+                        .uploadPath(uploadPath)
                         .imageOrder(fileOrder++)
                         .build();
 
+                // IMAGE_UPLOAD 테이블에 저장 (useGeneratedKeys로 uploadId가 채워짐)
                 postMapper.saveImage(imageDto);
                 Long uploadId = imageDto.getUploadId();
 
+                // POST_UPLOAD 테이블에 게시글 ID와 이미지 ID 연결 저장
                 postMapper.savePostImage(postId, uploadId);
             }
         }
-    }
+    } // 👈 빠져있던 `saveWithFiles`의 닫는 괄호 추가 완료!
 
     /**
      * 게시글 수정 (정보 수정 + 기존 미디어 삭제 + 새 미디어 추가) - 일반 수정용
@@ -182,7 +184,7 @@ public class PostService {
             for (MultipartFile file : mediaFiles) {
                 if (file.isEmpty()) continue;
 
-                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, "/uploads/post");
+                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, WEB_PREFIX);
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(savedFile.getOriginalName())
@@ -205,10 +207,8 @@ public class PostService {
     public void updateWithFiles(PostDto postDto, List<Long> deleteImageIds, List<String> savedFileNames) {
         Long postId = postDto.getPostId();
 
-        // 1. 게시글 기본 정보 업데이트
         postMapper.update(postDto);
 
-        // 2. 삭제 대상 이미지 처리
         if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
             for (Long uploadId : deleteImageIds) {
                 postMapper.deleteByPostIdAndUploadId(postId, uploadId);
@@ -216,7 +216,6 @@ public class PostService {
             }
         }
 
-        // 3. 새로 업로드된 청크 병합 파일들 추가
         if (savedFileNames != null && !savedFileNames.isEmpty()) {
             List<PostImageDto> existingImages = postMapper.findImagesByPostId(postId);
             int imageOrder = existingImages.size();
@@ -225,9 +224,11 @@ public class PostService {
                 int underscoreIndex = savedFileName.indexOf("_");
                 String originName = (underscoreIndex != -1) ? savedFileName.substring(underscoreIndex + 1) : savedFileName;
 
+                String uploadPath = WEB_PREFIX + "/" + savedFileName;
+
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(originName)
-                        .uploadPath("/uploads/post/" + savedFileName)
+                        .uploadPath(uploadPath)
                         .imageOrder(imageOrder++)
                         .build();
 

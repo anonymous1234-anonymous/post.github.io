@@ -101,14 +101,14 @@
                                style="width: 100%; height: 100%; object-fit: contain;"></video>
                       </c:when>
 
-                      <%-- 3. 오디오 파일인 경우 --%>
-                      <c:when test="${fn:endsWith(fn:toLowerCase(path), '.mp3') || fn:endsWith(fn:toLowerCase(path), '.wav') || fn:endsWith(fn:toLowerCase(path), '.ogg')}">
-                        <div class="text-center text-white">
-                          <i class="bi bi-file-earmark-music display-1 mb-3"></i>
-                          <p><c:out value="${image.originName}"/></p>
-                          <audio src="${pageContext.request.contextPath}${image.uploadPath}" controls class="w-75"></audio>
-                        </div>
-                      </c:when>
+                     <%-- 3. 오디오 파일인 경우 (확장자 추가 및 소문자 변환 확실히 적용) --%>
+                     <c:when test="${fn:endsWith(fn:toLowerCase(path), '.mp3') || fn:endsWith(fn:toLowerCase(path), '.wav') || fn:endsWith(fn:toLowerCase(path), '.ogg') || fn:endsWith(fn:toLowerCase(path), '.m4a') || fn:endsWith(fn:toLowerCase(path), '.flac')}">
+                         <div class="text-center text-white">
+                             <i class="bi bi-file-earmark-music display-1 mb-3"></i>
+                             <p><c:out value="${image.originName}"/></p>
+                             <audio src="${pageContext.request.contextPath}${image.uploadPath}" controls class="w-75"></audio>
+                         </div>
+                     </c:when>
 
                       <%-- 4. 그 외 일반 파일 (ZIP, PDF 등)인 경우 --%>
                       <c:otherwise>

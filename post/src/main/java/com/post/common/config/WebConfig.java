@@ -17,13 +17,14 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String absolutePath = new File(postUploadDir).getAbsolutePath().replace("\\", "/");
+        // ⭐ 수동 문자열 조합 대신 toURI().toString()을 사용하면 OS 경로 마찰이 100% 사라집니다.
+        String uploadImageUrl = new File(postUploadDir).toURI().toString();
 
         // 1. 외부 업로드 이미지 경로 매핑
         registry.addResourceHandler("/uploads/post/**")
-                .addResourceLocations("file:///" + absolutePath + "/");
+                .addResourceLocations(uploadImageUrl);
 
-        // 2. [필수 추가] /assets/** 요청이 오면 스프링 부트 static/assets 폴더를 바라보도록 매핑
+        // 2. /assets/** 요청 매핑
         registry.addResourceHandler("/assets/**")
                 .addResourceLocations("classpath:/static/assets/");
     }

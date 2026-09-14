@@ -18,6 +18,7 @@ public interface PostMapper {
             @Param("size") int size
     );
 
+
     int countAll(@Param("keyword") String keyword);
 
     PostDto findById(@Param("postId") Long postId);
@@ -27,7 +28,7 @@ public interface PostMapper {
     );
 
     void save(PostDto post);
-
+    
     void delete(Long postId);
 
     void update(PostDto post);

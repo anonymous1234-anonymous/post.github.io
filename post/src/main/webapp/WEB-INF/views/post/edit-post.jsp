@@ -56,11 +56,26 @@
 
                 <c:choose>
                   <c:when test="${not empty post.images}">
-                    <img id="post-main-preview"
-                         class="zt-post-main-image"
-                         src="${pageContext.request.contextPath}${post.images[0].uploadPath}"
-                         alt="메인 파일 미리보기"
-                         style="width: 100%; height: 350px; object-fit: contain;">
+                    <c:set var="firstPath" value="${fn:toLowerCase(post.images[0].uploadPath)}" />
+
+                    <%-- 첫 번째 파일이 동영상인 경우 --%>
+                    <c:choose>
+                      <c:when test="${fn:contains(firstPath, '.mp4') || fn:contains(firstPath, '.webm') || fn:contains(firstPath, '.mov') || fn:contains(firstPath, '.avi') || fn:contains(firstPath, '.m4v') || fn:contains(firstPath, '.qt')}">
+                        <video id="post-main-preview"
+                               class="zt-post-main-image"
+                               src="${pageContext.request.contextPath}${post.images[0].uploadPath}"
+                               controls
+                               style="width: 100%; height: 350px; object-fit: contain; background: #000;"></video>
+                      </c:when>
+                      <%-- 이미지인 경우 --%>
+                      <c:otherwise>
+                        <img id="post-main-preview"
+                             class="zt-post-main-image"
+                             src="${pageContext.request.contextPath}${post.images[0].uploadPath}"
+                             alt="메인 파일 미리보기"
+                             style="width: 100%; height: 350px; object-fit: contain;">
+                      </c:otherwise>
+                    </c:choose>
                   </c:when>
                   <c:otherwise>
                     <div id="post-image-empty" class="zt-post-image-empty text-center p-4">
@@ -86,13 +101,18 @@
                 <div class="d-flex flex-wrap gap-2">
                   <c:forEach var="image" items="${post.images}" varStatus="status">
                     <div class="position-relative border p-1 rounded text-center" style="width: 70px;">
-                      <c:set var="path" value="${image.uploadPath}" />
+                      <c:set var="path" value="${fn:toLowerCase(image.uploadPath)}" />
                       <c:choose>
-                        <c:when test="${fn:endsWith(fn:toLowerCase(path), '.jpg') || fn:endsWith(fn:toLowerCase(path), '.jpeg') || fn:endsWith(fn:toLowerCase(path), '.png') || fn:endsWith(fn:toLowerCase(path), '.gif') || fn:endsWith(fn:toLowerCase(path), '.webp')}">
+                        <c:when test="${fn:contains(path, '.mp4') || fn:contains(path, '.webm') || fn:contains(path, '.mov') || fn:contains(path, '.avi') || fn:contains(path, '.m4v') || fn:contains(path, '.qt')}">
+                          <div class="bg-dark text-white d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border-radius: 4px;">
+                            <i class="bi bi-film"></i>
+                          </div>
+                        </c:when>
+                        <c:when test="${fn:contains(path, '.jpg') || fn:contains(path, '.jpeg') || fn:contains(path, '.png') || fn:contains(path, '.gif') || fn:contains(path, '.webp')}">
                           <img src="${pageContext.request.contextPath}${image.uploadPath}" alt="썸네일" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
                         </c:when>
                         <c:otherwise>
-                          <div class="bg-secondary text-white d-flex align-items-center justify-content: center;" style="width: 60px; height: 60px; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                          <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border-radius: 4px;">
                             <i class="bi bi-file-earmark-fill"></i>
                           </div>
                         </c:otherwise>

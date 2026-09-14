@@ -82,11 +82,13 @@
                   <i class="bi bi-plus-lg"></i>
                   <span>파일</span>
 
-                  <input id="new-post-image"
-                         name="files"
-                         type="file"
-                         multiple
-                         class="d-none">
+                 <input id="new-post-image"
+                        name="files"
+                        type="file"
+                        accept="image/*,video/*,audio/*"
+                        multiple
+                        class="d-none">
+
                 </label>
               </div>
 

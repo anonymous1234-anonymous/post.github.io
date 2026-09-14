@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const chunkFormData = new FormData();
                     chunkFormData.append("file", chunk);
                     chunkFormData.append("fileUid", fileUid);
-                    chunkFormData.append("fileName", file.name);
+                    chunkFormData.append("originalName", file.name);
                     chunkFormData.append("chunkIndex", chunkIndex);
                     chunkFormData.append("totalChunks", totalChunks);
 

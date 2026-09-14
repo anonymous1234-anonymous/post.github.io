@@ -238,13 +238,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         const formData = new FormData();
                         formData.append("file", chunk);
                         formData.append("fileUid", fileUid);
-                        formData.append("fileName", file.name);
+                        formData.append("originalName", file.name);
                         formData.append("chunkIndex", chunkIndex);
                         formData.append("totalChunks", totalChunks);
 
                         const chunkRes = await fetch('/api/posts/upload-chunk', {
                             method: 'POST',
-                            body: formData // Content-Type 헤더 임의 설정 금지 (브라우저가 boundary 자동 지정)
+                            body: formData
                         });
 
                         const chunkResult = await chunkRes.json();
@@ -262,20 +262,24 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
-                // 2. 입력폼의 DTO 데이터 구성 (JSP input id 매칭)
-                const postDto = {
-                    title: form.querySelector('#post-title') ? form.querySelector('#post-title').value : "",
-                    place: form.querySelector('#post-place') ? form.querySelector('#post-place').value : "",
-                    content: form.querySelector('#post-content') ? form.querySelector('#post-content').value : "",
-                    transportCost: form.querySelector('#transport-cost') ? Number(form.querySelector('#transport-cost').value) : 0,
-                    foodCost: form.querySelector('#food-cost') ? Number(form.querySelector('#food-cost').value) : 0,
-                    otherCost: form.querySelector('#other-cost') ? Number(form.querySelector('#other-cost').value) : 0
-                };
-
-                // 3. 백엔드로 보낼 최종 FormData 구성 (multipart/form-data)
+                // 2 & 3. 백엔드로 보낼 최종 FormData 구성 (multipart/form-data)
                 const finalPayload = new FormData();
-                finalPayload.append("postDto", new Blob([JSON.stringify(postDto)], { type: "application/json" }));
 
+                const titleEl = form.querySelector('#post-title');
+                const placeEl = form.querySelector('#post-place');
+                const contentEl = form.querySelector('#post-content');
+                const transportEl = form.querySelector('#transport-cost');
+                const foodEl = form.querySelector('#food-cost');
+                const otherEl = form.querySelector('#other-cost');
+
+                if (titleEl) finalPayload.append("title", titleEl.value);
+                if (placeEl) finalPayload.append("place", placeEl.value);
+                if (contentEl) finalPayload.append("content", contentEl.value);
+                if (transportEl) finalPayload.append("transportCost", transportEl.value || 0);
+                if (foodEl) finalPayload.append("foodCost", foodEl.value || 0);
+                if (otherEl) finalPayload.append("otherCost", otherEl.value || 0);
+
+                // 병합된 파일 이름 리스트 추가
                 savedFileNames.forEach(name => {
                     finalPayload.append("savedFileNames", name);
                 });
@@ -283,14 +287,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 // 4. 최종 게시글 등록 API 호출 (POST /api/posts)
                 const finalRes = await fetch('/api/posts', {
                     method: 'POST',
-                    body: finalPayload // JSON 헤더 제거하여 multipart 전송 보장
+                    body: finalPayload
                 });
 
                 const finalResult = await finalRes.json();
 
                 if (finalRes.ok && finalResult.success) {
                     alert("게시글이 성공적으로 등록되었습니다!");
-                    location.href = "/home"; // 등록 후 이동할 메인 경로
+                    location.href = "/main-post";
                 } else {
                     alert("게시글 등록에 실패했습니다: " + (finalResult.message || ""));
                     if (submitBtn) submitBtn.disabled = false;
@@ -301,6 +305,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert("오류가 발생했습니다: " + error.message);
                 if (submitBtn) submitBtn.disabled = false;
             }
-        });
-    }
-});
+        }); // 👈 누락되어 있던 폼 이벤트 리스너 닫는 괄호
+    } // 👈 누락되어 있던 form 조건문 닫는 괄호
+}); // 👈 누락되어 있던 DOMContentLoaded 닫는 괄호
