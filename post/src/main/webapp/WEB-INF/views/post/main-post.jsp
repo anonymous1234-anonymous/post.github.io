@@ -102,10 +102,8 @@
     </main>
   </div>
 </div>
-<script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-edit.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
-</html>
+</script>

@@ -70,15 +70,28 @@ public class PostApiController {
     }
 
     /**
-     * 3. 최종 글 등록 API (FormData로 넘어오는 postDto와 savedFileNames 받기)
+     * 3. 최종 글 등록 API (개별 @RequestParam으로 확실하게 수신 후 PostDto에 조립)
      * POST /api/posts
      */
     @PostMapping
     public ResponseEntity<?> createPost(
-            @RequestPart("postDto") PostDto postDto,
+            @RequestParam("title") String title,
+            @RequestParam(value = "place", required = false) String place,
+            @RequestParam("content") String content,
+            @RequestParam(value = "transportCost", defaultValue = "0") Long transportCost,
+            @RequestParam(value = "foodCost", defaultValue = "0") Long foodCost,
+            @RequestParam(value = "otherCost", defaultValue = "0") Long otherCost,
             @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
     ) {
         try {
+            PostDto postDto = new PostDto();
+            postDto.setTitle(title);
+            postDto.setPlace(place);
+            postDto.setContent(content);
+            postDto.setTransportCost(transportCost);
+            postDto.setFoodCost(foodCost);
+            postDto.setOtherCost(otherCost);
+
             postService.saveWithFiles(postDto, savedFileNames);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
@@ -94,11 +107,24 @@ public class PostApiController {
     @PutMapping("/{postId}")
     public ApiResponse<Void> updatePost(
             @PathVariable Long postId,
-            @RequestPart("postDto") PostDto postDto,
+            @RequestParam("title") String title,
+            @RequestParam(value = "place", required = false) String place,
+            @RequestParam("content") String content,
+            @RequestParam(value = "transportCost", defaultValue = "0") Long transportCost,
+            @RequestParam(value = "foodCost", defaultValue = "0") Long foodCost,
+            @RequestParam(value = "otherCost", defaultValue = "0") Long otherCost,
             @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteImageIds,
             @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
     ) throws IOException {
+        PostDto postDto = new PostDto();
         postDto.setPostId(postId);
+        postDto.setTitle(title);
+        postDto.setPlace(place);
+        postDto.setContent(content);
+        postDto.setTransportCost(transportCost);
+        postDto.setFoodCost(foodCost);
+        postDto.setOtherCost(otherCost);
+
         postService.updateWithFiles(postDto, deleteImageIds, savedFileNames);
         return ApiResponse.success(null);
     }

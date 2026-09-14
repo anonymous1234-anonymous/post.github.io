@@ -24,4 +24,6 @@ public class PostDto {
 
     // 이미지 리스트 필드
     private List<PostImageDto> images;
+    private List<String> savedFileNames;
+    private List<Long> deleteImageIds;
 }

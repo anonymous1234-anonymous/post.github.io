@@ -17,6 +17,9 @@
         <result property="foodCost" column="FOOD_COST"/>
         <result property="otherCost" column="OTHER_COST"/>
         <result property="thumbnailPath" column="THUMBNAIL_PATH"/>
+
+        <!-- 🌟 이 부분을 추가하여 findImagesByPostId 결과를 PostDto의 images 리스트에 자동 매핑합니다 -->
+        <collection property="images" column="POST_ID" javaType="java.util.List" ofType="PostImageDto" select="findImagesByPostId"/>
     </resultMap>
 
     <!-- 상세 조회 -->
