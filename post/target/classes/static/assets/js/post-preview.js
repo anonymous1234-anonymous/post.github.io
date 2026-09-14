@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const maxFileCount = 10;
+    const maxFileCount = 10; // 최대 파일 제한 개수
 
     const uploader = document.querySelector("[data-post-image-uploader]");
     const imageInput = document.querySelector("#new-post-image");
@@ -23,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const container = mainPreview.parentElement;
     let mediaElement = container.querySelector("#dynamic-media-view");
 
-    // dynamic-media-view 안전하게 확보 및 스타일 정렬 (absolute 제거로 버튼 클릭 방해 방지)
     if (!mediaElement) {
         mediaElement = document.createElement("div");
         mediaElement.id = "dynamic-media-view";
@@ -85,7 +84,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         imageCount.textContent = `${currentImageIndex + 1} / ${selectedFiles.length}`;
 
-        // 양옆 버튼 가시성 제어 및 클릭 방해 방지를 위한 z-index 부여
         if (prevBtn && nextBtn) {
             const hasMultiple = selectedFiles.length > 1;
             prevBtn.style.display = hasMultiple ? "block" : "none";
@@ -164,7 +162,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 좌측 이동 버튼 이벤트
     if (prevBtn) {
         prevBtn.onclick = (e) => {
             e.preventDefault();
@@ -175,7 +172,6 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // 우측 이동 버튼 이벤트
     if (nextBtn) {
         nextBtn.onclick = (e) => {
             e.preventDefault();
@@ -216,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 폼 제출 로직 (오류 문법 정리 완료)
+    // 폼 제출 로직 (FormData 및 API 전송 규격 일치화)
     if (form) {
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -227,10 +223,12 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 let savedFileNames = [];
 
+                // 1. 파일 청크 단위 업로드 수행
                 for (const file of selectedFiles) {
-                    const CHUNK_SIZE = 5 * 1024 * 1024;
+                    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
                     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-                    const fileUid = self.crypto.randomUUID();
+                    const fileUid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'file-' + Date.now();
+                    let fileSavedName = null;
 
                     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
                         const start = chunkIndex * CHUNK_SIZE;
@@ -240,49 +238,67 @@ document.addEventListener("DOMContentLoaded", () => {
                         const formData = new FormData();
                         formData.append("file", chunk);
                         formData.append("fileUid", fileUid);
-                        formData.append("originalName", file.name);
+                        formData.append("fileName", file.name);
                         formData.append("chunkIndex", chunkIndex);
                         formData.append("totalChunks", totalChunks);
 
-                        const chunkRes = await fetch('${pageContext.request.contextPath}/api/posts/upload-chunk', {
+                        const chunkRes = await fetch('/api/posts/upload-chunk', {
                             method: 'POST',
-                            body: formData
+                            body: formData // Content-Type 헤더 임의 설정 금지 (브라우저가 boundary 자동 지정)
                         });
 
                         const chunkResult = await chunkRes.json();
-                        if (chunkResult.data && chunkResult.data.completed) {
-                            savedFileNames.push(chunkResult.data.savedFileName);
+                        if (!chunkResult.success) {
+                            throw new Error(chunkResult.message || "청크 업로드 실패");
                         }
+
+                        if (chunkResult.data && chunkResult.data.completed) {
+                            fileSavedName = chunkResult.data.savedFileName;
+                        }
+                    }
+
+                    if (fileSavedName) {
+                        savedFileNames.push(fileSavedName);
                     }
                 }
 
-                const postData = {
-                    title: form.querySelector('#post-title').value,
-                    place: form.querySelector('#post-place').value,
-                    content: form.querySelector('#post-content').value,
-                    transportCost: form.querySelector('#transport-cost').value,
-                    foodCost: form.querySelector('#food-cost').value,
-                    otherCost: form.querySelector('#other-cost').value,
-                    savedFileNames: savedFileNames
+                // 2. 입력폼의 DTO 데이터 구성 (JSP input id 매칭)
+                const postDto = {
+                    title: form.querySelector('#post-title') ? form.querySelector('#post-title').value : "",
+                    place: form.querySelector('#post-place') ? form.querySelector('#post-place').value : "",
+                    content: form.querySelector('#post-content') ? form.querySelector('#post-content').value : "",
+                    transportCost: form.querySelector('#transport-cost') ? Number(form.querySelector('#transport-cost').value) : 0,
+                    foodCost: form.querySelector('#food-cost') ? Number(form.querySelector('#food-cost').value) : 0,
+                    otherCost: form.querySelector('#other-cost') ? Number(form.querySelector('#other-cost').value) : 0
                 };
 
-                const finalRes = await fetch('${pageContext.request.contextPath}/new-post', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(postData)
+                // 3. 백엔드로 보낼 최종 FormData 구성 (multipart/form-data)
+                const finalPayload = new FormData();
+                finalPayload.append("postDto", new Blob([JSON.stringify(postDto)], { type: "application/json" }));
+
+                savedFileNames.forEach(name => {
+                    finalPayload.append("savedFileNames", name);
                 });
 
-                if (finalRes.ok) {
+                // 4. 최종 게시글 등록 API 호출 (POST /api/posts)
+                const finalRes = await fetch('/api/posts', {
+                    method: 'POST',
+                    body: finalPayload // JSON 헤더 제거하여 multipart 전송 보장
+                });
+
+                const finalResult = await finalRes.json();
+
+                if (finalRes.ok && finalResult.success) {
                     alert("게시글이 성공적으로 등록되었습니다!");
-                    location.href = "${pageContext.request.contextPath}/home";
+                    location.href = "/home"; // 등록 후 이동할 메인 경로
                 } else {
-                    alert("게시글 등록에 실패했습니다.");
+                    alert("게시글 등록에 실패했습니다: " + (finalResult.message || ""));
                     if (submitBtn) submitBtn.disabled = false;
                 }
 
             } catch (error) {
                 console.error("업로드 중 오류 발생:", error);
-                alert("오류가 발생했습니다. 다시 시도해주세요.");
+                alert("오류가 발생했습니다: " + error.message);
                 if (submitBtn) submitBtn.disabled = false;
             }
         });

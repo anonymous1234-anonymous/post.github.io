@@ -11,8 +11,8 @@
   <title>피드 상세 | post</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/post-detail.css">
+   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
 </head>
 <body>
 <div class="zt-app">
@@ -158,9 +158,7 @@
   </div>
 </div>
 
-<script src="${pageContext.request.contextPath}/assets/js/post-detail-carousel.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-infinite-scroll.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>

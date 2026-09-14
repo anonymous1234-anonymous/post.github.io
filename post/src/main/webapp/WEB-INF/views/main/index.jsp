@@ -9,7 +9,6 @@
     <title>메인 피드 | post</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
 </head>
 <body>
 <div class="zt-app">
@@ -23,8 +22,7 @@
     <nav class="zt-mobile-nav" aria-label="모바일 메뉴">
         <a href="${pageContext.request.contextPath}/main-post" aria-label="post"><i class="bi bi-grid-3x3-gap"></i></a>
         <a href="${pageContext.request.contextPath}/new-post" aria-label="new"><i class="bi bi-plus-square"></i></a>
-        <!-- 오디오 유틸리티 페이지로 연결되는 링크 아이콘 수정 -->
-        <a href="${pageContext.request.contextPath}/audio" aria-label="audio"><i class="bi bi-music-note-beamed"></i></a>
+
     </nav>
 
     <div class="zt-layout">
@@ -40,7 +38,7 @@
                 </script>
             </c:if>
 
-            <!-- 1. 상단 메인 캐러셀 배너를 위로 배치하여 시인성 확보 -->
+            <!-- 1. 상단 메인 캐러셀 배너 -->
             <section class="mb-4">
                 <div id="mainAutoCarousel" class="carousel slide shadow-sm rounded overflow-hidden" data-bs-ride="carousel" data-bs-interval="4000">
                     <div class="carousel-indicators">
@@ -49,6 +47,7 @@
                         <button type="button" data-bs-target="#mainAutoCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
                     </div>
 
+                    <!-- [수정 완료] 닫는 태그 오류 수정 및 이미지 2 슬라이드 복구 -->
                     <div class="carousel-inner" style="height: 300px;">
                         <div class="carousel-item active h-100">
                             <img src="${pageContext.request.contextPath}/assets/images/1.jpg" class="d-block w-100 h-100" style="object-fit: cover;" alt="이미지 1">
@@ -57,13 +56,15 @@
                                 <p class="mb-0">소중한 추억을 남겨보세요.</p>
                             </div>
                         </div>
+
                         <div class="carousel-item h-100">
                             <img src="${pageContext.request.contextPath}/assets/images/2.jpg" class="d-block w-100 h-100" style="object-fit: cover;" alt="이미지 2">
                             <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded p-2">
-                                <h5 class="fw-bold">오디오 유틸리티 활용</h5>
-                                <p class="mb-0">음악 제작 및 변환 툴을 만나보세요.</p>
+                                <h5 class="fw-bold">일상을 공유하는 공간</h5>
+                                <p class="mb-0">새로운 사람들과 소통해 보세요.</p>
                             </div>
                         </div>
+
                         <div class="carousel-item h-100">
                             <img src="${pageContext.request.contextPath}/assets/images/3.jpg" class="d-block w-100 h-100" style="object-fit: cover;" alt="이미지 3">
                             <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded p-2">

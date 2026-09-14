@@ -5,7 +5,7 @@ import com.post.common.response.PageResponse;
 import com.post.common.util.FileUploadUtil;
 import com.post.common.util.SavedFile;
 import com.post.common.validation.PostValidator;
-import com.post.post.dto.ChunkUploadDto; // 추가됨
+import com.post.post.dto.ChunkUploadDto;
 import com.post.post.dto.PostDto;
 import com.post.post.dto.PostImageDto;
 import com.post.post.mapper.PostMapper;
@@ -14,12 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File; // 추가됨
-import java.io.FileOutputStream; // 추가됨
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files; // 추가됨
+import java.nio.file.Files;
 import java.util.List;
-import java.util.UUID; // 추가됨
+import java.util.UUID;
 
 @Service
 public class PostService {
@@ -30,10 +30,6 @@ public class PostService {
 
     @Value("${file.upload-dir.post}")
     private String postUploadDir;
-
-    // 임시 저장 경로 및 최종 저장 경로 (운영 환경에 맞게 경로 수정 가능)
-    private final String TEMP_DIR = "C:/post/uploads/";
-    private final String FINAL_DIR = "C:/post/uploads/";
 
     public PostService(
             PostMapper postMapper,
@@ -46,10 +42,11 @@ public class PostService {
     }
 
     /**
-     * 대용량 파일 청크(조각) 저장 및 병합 로직
+     * 대용량 파일 청크(조각) 저장 및 병합 로직 (경로 통일 및 방어 코드 적용)
      */
     public String processChunkUpload(ChunkUploadDto dto) throws IOException {
-        File tempDir = new File(TEMP_DIR + dto.getFileUid());
+        // 하드코딩 제거: 설정값(postUploadDir) 기반의 임시 폴더 경로 설정
+        File tempDir = new File(postUploadDir + "/temp/" + dto.getFileUid());
         if (!tempDir.exists()) {
             tempDir.mkdirs();
         }
@@ -70,13 +67,15 @@ public class PostService {
 
         // 3. 모든 조각이 다 도착했다면 하나로 병합 (Merge)
         if (isAllUploaded) {
-            String savedFileName = UUID.randomUUID().toString() + "_" + dto.getOriginalName();
-            File finalDirFile = new File(FINAL_DIR);
+            String originName = (dto.getOriginalName() != null) ? dto.getOriginalName() : "unknown";
+            String savedFileName = UUID.randomUUID().toString() + "_" + originName;
+
+            File finalDirFile = new File(postUploadDir);
             if (!finalDirFile.exists()) {
                 finalDirFile.mkdirs();
             }
 
-            File finalFile = new File(FINAL_DIR + savedFileName);
+            File finalFile = new File(postUploadDir, savedFileName);
 
             try (FileOutputStream fos = new FileOutputStream(finalFile, true)) {
                 for (int i = 0; i < dto.getTotalChunks(); i++) {
@@ -86,8 +85,10 @@ public class PostService {
                 }
             }
 
-            // 임시 디렉토리 삭제
-            tempDir.delete();
+            // 임시 디렉토리 폴더 삭제
+            if (tempDir.exists()) {
+                tempDir.delete();
+            }
 
             // 병합된 최종 파일명 리턴
             return savedFileName;
@@ -98,7 +99,7 @@ public class PostService {
     }
 
     /**
-     * 게시글 등록 (검증 + 저장 + 미디어 파일 업로드) - 기존 일반 업로드용
+     * 게시글 등록 (검증 + 저장 + 미디어 파일 업로드) - 일반 업로드용
      */
     @Transactional
     public void save(PostDto postDto, List<MultipartFile> mediaFiles) throws IOException {
@@ -129,21 +130,22 @@ public class PostService {
     }
 
     /**
-     * [추가] 청크 업로드 완료된 파일 이름 리스트를 받아 게시글 등록 처리
+     * 청크 업로드 완료된 파일 이름 리스트를 받아 게시글 등록 처리
      */
     @Transactional
     public void saveWithFiles(PostDto postDto, List<String> savedFileNames) {
-        // 1. 게시글 기본 정보 저장
         postMapper.save(postDto);
         Long postId = postDto.getPostId();
 
-        // 2. 이미 서버에 병합된 파일들의 정보를 DB에 기록
         if (savedFileNames != null && !savedFileNames.isEmpty()) {
             int fileOrder = 0;
             for (String savedFileName : savedFileNames) {
-                // 원본 이름과 저장된 경로 매핑 (필요에 따라 DTO 구조에 맞게 조절)
+                // 안전한 파일 이름 파싱 (언더바가 없을 경우 대비)
+                int underscoreIndex = savedFileName.indexOf("_");
+                String originName = (underscoreIndex != -1) ? savedFileName.substring(underscoreIndex + 1) : savedFileName;
+
                 PostImageDto imageDto = PostImageDto.builder()
-                        .originName(savedFileName.substring(savedFileName.indexOf("_") + 1)) // UUID 제거 후 원본명 복원 혹은 그대로 저장
+                        .originName(originName)
                         .uploadPath("/uploads/post/" + savedFileName)
                         .imageOrder(fileOrder++)
                         .build();
@@ -157,7 +159,7 @@ public class PostService {
     }
 
     /**
-     * 게시글 수정 (정보 수정 + 기존 미디어 삭제 + 새 미디어 추가) - 기존 일반 수정용
+     * 게시글 수정 (정보 수정 + 기존 미디어 삭제 + 새 미디어 추가) - 일반 수정용
      */
     @Transactional
     public void update(PostDto postDto, List<Long> deleteImageIds, List<MultipartFile> mediaFiles) throws IOException {
@@ -197,7 +199,7 @@ public class PostService {
     }
 
     /**
-     * [추가] 청크 업로드를 통해 수정할 때 사용하는 메서드
+     * 청크 업로드를 통해 수정할 때 사용하는 메서드
      */
     @Transactional
     public void updateWithFiles(PostDto postDto, List<Long> deleteImageIds, List<String> savedFileNames) {
@@ -220,8 +222,11 @@ public class PostService {
             int imageOrder = existingImages.size();
 
             for (String savedFileName : savedFileNames) {
+                int underscoreIndex = savedFileName.indexOf("_");
+                String originName = (underscoreIndex != -1) ? savedFileName.substring(underscoreIndex + 1) : savedFileName;
+
                 PostImageDto imageDto = PostImageDto.builder()
-                        .originName(savedFileName.substring(savedFileName.indexOf("_") + 1))
+                        .originName(originName)
                         .uploadPath("/uploads/post/" + savedFileName)
                         .imageOrder(imageOrder++)
                         .build();
