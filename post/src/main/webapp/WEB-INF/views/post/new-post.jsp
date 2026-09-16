@@ -177,23 +177,5 @@
 
 <script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
-
-<%-- 🌟 반드시 <script> 태그로 감싸주어야 자바스크립트 엔진이 정상 인식합니다! --%>
-<script>
-    window.initialFiles = [
-        <c:forEach var="file" items="${existingFiles}" varStatus="status">
-            <%-- WebConfig의 addResourceHandler("/uploads/post/**") 경로와 완벽 일치 --%>
-            "${pageContext.request.contextPath}/uploads/post/${file.savedFileName}"<c:if test="${!status.last}">,</c:if>
-        </c:forEach>
-    ];
-
-    // 수정 모드 기존 이미지 정보 (경로를 /images -> /uploads/post 로 수정)
-    window.existingImageIds = [
-        <c:forEach var="file" items="${existingFiles}" varStatus="status">
-            { id: "${file.fileId}", url: "${pageContext.request.contextPath}/uploads/post/${file.savedFileName}" }<c:if test="${!status.last}">,</c:if>
-        </c:forEach>
-    ];
-</script>
-
 </body>
 </html>

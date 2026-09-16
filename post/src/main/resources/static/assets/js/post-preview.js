@@ -126,8 +126,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (isImage) {
                 thumbContent.innerHTML = `<img src="${thumbnailUrl}" alt="${file.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
             } else if (isVideo) {
-                thumbContent.innerHTML = `<i class="bi bi-file-earmark-play-fill text-dark" style="font-size: 1.5rem;"></i>`;
+                // 🌟 비디오 파일도 썸네일(첫 프레임 미리보기)이 나오도록 <video> 태그 삽입
+                thumbContent.innerHTML = `<video src="${thumbnailUrl}#t=0.1" preload="metadata" muted style="width: 100%; height: 100%; object-fit: cover; pointer-events: none;"></video>`;
             } else {
+                // 오디오나 기타 파일은 파일 아이콘 표시
                 thumbContent.innerHTML = `<i class="bi bi-file-earmark-fill text-dark" style="font-size: 1.5rem;"></i>`;
             }
 
@@ -223,9 +225,8 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 let savedFileNames = [];
 
-                // 1. 새로 추가된 파일(File 객체인 경우만) 청크 단위 업로드 수행
                 for (const file of selectedFiles) {
-                    if (typeof file === "string") continue; // 기존 파일(문자열 URL)은 업로드 스킵
+                    if (typeof file === "string") continue;
 
                     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
                     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -264,7 +265,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
-                // 2. 최종 Payload 구성
                 const finalPayload = new FormData();
 
                 const postIdInput = form.querySelector('input[name="postId"]');
@@ -277,12 +277,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 finalPayload.append("foodCost", form.querySelector('#food-cost')?.value || 0);
                 finalPayload.append("otherCost", form.querySelector('#other-cost')?.value || 0);
 
-                // 새로 업로드된 파일 이름들 추가
                 savedFileNames.forEach(name => {
                     finalPayload.append("savedFileNames", name);
                 });
 
-                // 🌟 수정일 경우: 삭제할 기존 이미지 ID들 추가
                 if (postId) {
                     const deleteImageCheckboxes = form.querySelectorAll("input[name='deleteImageIds']:checked");
                     deleteImageCheckboxes.forEach((chk) => {
@@ -290,7 +288,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                 }
 
-                // 3. API 주소 및 메서드 동적 분기 (등록: POST /api/posts, 수정: PUT /api/posts/{postId})
                 const url = postId ? `/api/posts/${postId}` : '/api/posts';
                 const method = postId ? 'PUT' : 'POST';
 

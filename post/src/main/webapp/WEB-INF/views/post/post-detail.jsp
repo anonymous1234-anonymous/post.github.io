@@ -75,10 +75,10 @@
                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: ${status.first ? 'flex' : 'none'}; align-items: center; justify-content: center; background: #000;"
                        data-index="${status.index}">
 
+                    <%-- 🌟 변수 정의를 반복문 내부 상단에 정확히 위치시킵니다 --%>
                     <c:set var="path" value="${image.uploadPath}" />
                     <c:set var="lowerPath" value="${fn:toLowerCase(path)}" />
 
-                    <%-- ⭐ 스마트 경로 정규화 (DB에 전체경로가 있든 파일명만 있든 중복 슬래시 없이 완벽 매핑) --%>
                     <c:choose>
                       <c:when test="${fn:startsWith(path, '/') || fn:startsWith(path, 'http')}">
                         <c:set var="resolvedPath" value="${path}" />
@@ -88,25 +88,24 @@
                       </c:otherwise>
                     </c:choose>
 
+                    <c:set var="isImage" value="${fn:contains(lowerPath, '.jpg') || fn:contains(lowerPath, '.jpeg') || fn:contains(lowerPath, '.png') || fn:contains(lowerPath, '.gif') || fn:contains(lowerPath, '.webp')}" />
+                    <c:set var="isVideo" value="${fn:contains(lowerPath, '.mp4') || fn:contains(lowerPath, '.webm') || fn:contains(lowerPath, '.mov') || fn:contains(lowerPath, '.avi')}" />
+                    <c:set var="isAudio" value="${fn:contains(lowerPath, '.mp3') || fn:contains(lowerPath, '.wav') || fn:contains(lowerPath, '.ogg') || fn:contains(lowerPath, '.m4a') || fn:contains(lowerPath, '.flac')}" />
+
                     <%-- 파일 확장자에 따른 분기 처리 --%>
                     <c:choose>
-                      <%-- 1. 이미지 파일인 경우 (.webp 포함) --%>
-                      <c:when test="${fn:endsWith(lowerPath, '.jpg') || fn:endsWith(lowerPath, '.jpeg') || fn:endsWith(lowerPath, '.png') || fn:endsWith(lowerPath, '.gif') || fn:endsWith(lowerPath, '.webp')}">
-                        <img src="${resolvedPath}"
-                             alt="${image.originName}"
-                             style="width: 100%; height: 100%; object-fit: contain;">
+                      <%-- 1. 이미지 파일인 경우 --%>
+                      <c:when test="${isImage}">
+                        <img src="${resolvedPath}" alt="${image.originName}" style="width: 100%; height: 100%; object-fit: contain;">
                       </c:when>
 
                       <%-- 2. 비디오 파일인 경우 (.webm 포함) --%>
-                      <c:when test="${fn:endsWith(lowerPath, '.mp4') || fn:endsWith(lowerPath, '.webm') || fn:endsWith(lowerPath, '.mov') || fn:endsWith(lowerPath, '.avi')}">
-                        <video src="${resolvedPath}"
-                               controls
-                               preload="metadata"
-                               style="width: 100%; height: 100%; object-fit: contain;"></video>
+                      <c:when test="${isVideo}">
+                        <video src="${resolvedPath}" controls preload="metadata" style="width: 100%; height: 100%; object-fit: contain;"></video>
                       </c:when>
 
                       <%-- 3. 오디오 파일인 경우 --%>
-                      <c:when test="${fn:endsWith(lowerPath, '.mp3') || fn:endsWith(lowerPath, '.wav') || fn:endsWith(lowerPath, '.ogg') || fn:endsWith(lowerPath, '.m4a') || fn:endsWith(lowerPath, '.flac')}">
+                      <c:when test="${isAudio}">
                         <div class="text-center text-white">
                             <i class="bi bi-file-earmark-music display-1 mb-3"></i>
                             <p><c:out value="${image.originName}"/></p>

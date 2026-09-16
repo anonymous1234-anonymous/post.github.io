@@ -133,7 +133,6 @@ public class PostService {
      */
     @Transactional
     public void saveWithFiles(PostDto postDto, List<String> savedFileNames) {
-        // 1. 게시글 저장 (useGeneratedKeys 덕분에 postDto에 postId가 자동 주입됩니다)
         postMapper.save(postDto);
         Long postId = postDto.getPostId();
 
@@ -150,15 +149,13 @@ public class PostService {
                         .imageOrder(fileOrder++)
                         .build();
 
-                // IMAGE_UPLOAD 테이블에 저장 (useGeneratedKeys로 uploadId가 채워짐)
                 postMapper.saveImage(imageDto);
                 Long uploadId = imageDto.getUploadId();
 
-                // POST_UPLOAD 테이블에 게시글 ID와 이미지 ID 연결 저장
                 postMapper.savePostImage(postId, uploadId);
             }
         }
-    } // 👈 빠져있던 `saveWithFiles`의 닫는 괄호 추가 완료!
+    }
 
     /**
      * 게시글 수정 (정보 수정 + 기존 미디어 삭제 + 새 미디어 추가) - 일반 수정용
@@ -240,6 +237,9 @@ public class PostService {
         }
     }
 
+    /**
+     * 🌟 [수정됨] 메인 피드 페이지네이션 목록 조회 시 각 게시글의 이미지 목록을 함께 세팅하도록 보완
+     */
     public PageResponse getPostPage(PageRequest pageRequest, String sort, String keyword) {
         if (pageRequest.getPage() < 1) {
             pageRequest.setPage(1);
@@ -248,11 +248,25 @@ public class PostService {
         int totalCount = postMapper.countAll(keyword);
         List<PostDto> list = postMapper.findPage(sort, keyword, pageRequest.getOffset(), pageRequest.getSize());
 
+        // 가져온 게시글 목록에 각각 이미지 정보를 매핑해 줍니다.
+        for (PostDto post : list) {
+            List<PostImageDto> images = postMapper.findImagesByPostId(post.getPostId());
+            post.setImages(images);
+        }
+
         return new PageResponse(list, totalCount, pageRequest);
     }
 
+    /**
+     * 🌟 [수정됨] 일반 목록 조회 시에도 이미지 목록을 함께 세팅하도록 보완
+     */
     public List<PostDto> findPage(String sort, String keyword, int offset, int size) {
-        return postMapper.findPage(sort, keyword, offset, size);
+        List<PostDto> list = postMapper.findPage(sort, keyword, offset, size);
+        for (PostDto post : list) {
+            List<PostImageDto> images = postMapper.findImagesByPostId(post.getPostId());
+            post.setImages(images);
+        }
+        return list;
     }
 
     public PostDto findById(Long postId) {
@@ -277,7 +291,12 @@ public class PostService {
     }
 
     public List<PostDto> findAll(String sort, String keyword) {
-        return postMapper.findAll(sort);
+        List<PostDto> list = postMapper.findAll(sort);
+        for (PostDto post : list) {
+            List<PostImageDto> images = postMapper.findImagesByPostId(post.getPostId());
+            post.setImages(images);
+        }
+        return list;
     }
 
     public int countAll(String keyword) {

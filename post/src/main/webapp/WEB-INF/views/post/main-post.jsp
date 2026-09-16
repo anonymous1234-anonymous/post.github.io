@@ -66,10 +66,38 @@
                   <c:forEach var="post" items="${posts}">
                       <div class="col">
                           <div class="card h-100 shadow-sm">
-                              <c:if test="${not empty post.thumbnailPath}">
-                                  <%-- 🌟 WebConfig 매핑 경로인 /uploads/post/ 와 정확히 일치하도록 경로 강제 조합 --%>
-                                  <img src="${pageContext.request.contextPath}/uploads/post/${post.thumbnailPath}" class="card-img-top" alt="썸네일" style="height: 200px; object-fit: cover;">
-                              </c:if>
+
+      <div class="col">
+          <div class="card h-100 shadow-sm">
+              <%-- 🌟 post.thumbnailPath 대신 post.images 리스트를 직접 참조하도록 수정 --%>
+              <c:choose>
+                  <c:when test="${not empty post.images}">
+                      <img src="${pageContext.request.contextPath}${post.images[0].uploadPath}" class="card-img-top" alt="썸네일" style="height: 200px; object-fit: cover;">
+                  </c:when>
+                  <c:otherwise>
+                      <%-- 이미지가 없을 때 보여줄 대체 영역 (선택사항) --%>
+                      <div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 200px;">
+                          <i class="bi bi-image fs-1"></i>
+                      </div>
+                  </c:otherwise>
+              </c:choose>
+
+              <div class="card-body">
+                  <h5 class="card-title fw-bold">
+                      <a href="${pageContext.request.contextPath}/detail?postId=${post.postId}" class="text-decoration-none text-dark">
+                          ${post.title}
+                      </a>
+                  </h5>
+                  <p class="card-text text-muted text-truncate">${post.content}</p>
+              </div>
+              <div class="card-footer bg-white d-flex justify-content-between align-items-center text-muted small">
+                  <span>${post.writer}</span>
+                  <span>${post.formattedCreateAt}</span>
+              </div>
+          </div>
+      </div>
+
+
                               <div class="card-body">
                                   <h5 class="card-title fw-bold">
                                       <a href="${pageContext.request.contextPath}/detail?postId=${post.postId}" class="text-decoration-none text-dark">
