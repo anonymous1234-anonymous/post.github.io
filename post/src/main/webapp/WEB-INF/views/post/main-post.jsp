@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/post-detail.css">
-   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
 </head>
 <body>
 <div class="zt-app">
@@ -67,7 +67,8 @@
                       <div class="col">
                           <div class="card h-100 shadow-sm">
                               <c:if test="${not empty post.thumbnailPath}">
-                                  <img src="${pageContext.request.contextPath}${post.thumbnailPath}" class="card-img-top" alt="썸네일" style="height: 200px; object-fit: cover;">
+                                  <%-- 🌟 WebConfig 매핑 경로인 /uploads/post/ 와 정확히 일치하도록 경로 강제 조합 --%>
+                                  <img src="${pageContext.request.contextPath}/uploads/post/${post.thumbnailPath}" class="card-img-top" alt="썸네일" style="height: 200px; object-fit: cover;">
                               </c:if>
                               <div class="card-body">
                                   <h5 class="card-title fw-bold">
@@ -106,4 +107,4 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
-</script>
+</html>

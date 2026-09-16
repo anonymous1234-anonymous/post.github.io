@@ -104,7 +104,11 @@ public class PostApiController {
      * 4. 게시글 수정 API
      * PUT /api/posts/{postId}
      */
-    @PutMapping("/{postId}")
+    /**
+     * 4. 게시글 수정 API (PUT 대신 POST로 변경하여 FormData 파싱 허용)
+     * POST /api/posts/{postId}/update 또는 POST /api/posts/{postId}
+     */
+    @PostMapping("/{postId}/update")
     public ApiResponse<Void> updatePost(
             @PathVariable Long postId,
             @RequestParam("title") String title,
@@ -116,6 +120,9 @@ public class PostApiController {
             @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteImageIds,
             @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
     ) throws IOException {
+        // 만약 빈 문자열("")이 리스트 매핑 중 변환 에러를 일으킨다면
+        // 서비스 단이나 컨트롤러에서 빈 문자열 필터링 처리를 해주시면 더욱 안전합니다.
+
         PostDto postDto = new PostDto();
         postDto.setPostId(postId);
         postDto.setTitle(title);
@@ -128,7 +135,6 @@ public class PostApiController {
         postService.updateWithFiles(postDto, deleteImageIds, savedFileNames);
         return ApiResponse.success(null);
     }
-
     /**
      * 5. 게시글 삭제 API
      * DELETE /api/posts/{postId}

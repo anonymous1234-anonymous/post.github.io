@@ -12,66 +12,58 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/post-detail.css">
-   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
 </head>
 <body>
-<div class="zt-app">
+<div class="app">
 
-  <header class="zt-mobile-header">
-    <a class="zt-brand" href="${pageContext.request.contextPath}/home">
+  <header class="mobile-header">
+    <a class="brand" href="${pageContext.request.contextPath}/home">
       <span>post</span>
     </a>
   </header>
-  <nav class="zt-mobile-nav" aria-label="모바일 메뉴">
+  <nav class="mobile-nav" aria-label="모바일 메뉴">
     <a href="${pageContext.request.contextPath}/home" class="" aria-label="home"><i class="bi bi-house"></i></a>
     <a href="${pageContext.request.contextPath}/main-post" class="active" aria-label="이야기"><i class="bi bi-grid-3x3-gap"></i></a>
     <a href="${pageContext.request.contextPath}/new-post" class="" aria-label="new"><i class="bi bi-plus-square"></i></a>
   </nav>
 
-  <div class="zt-layout">
+  <div class="layout">
 
     <jsp:include page="/WEB-INF/views/components/sidebar.jsp">
       <jsp:param name="activePage" value="new-post" />
     </jsp:include>
 
-    <main class="zt-content">
-      <article class="zt-panel overflow-hidden">
+    <main class="content">
+      <article class="panel overflow-hidden">
 
-        <div class="zt-detail-title-area">
-          <span class="zt-detail-category">이야기</span>
-          <h1 class="zt-detail-title">
+        <div class="detail-title-area">
+          <span class="detail-category">이야기</span>
+          <h1 class="detail-title">
             <c:out value="${post.title}"/>
           </h1>
         </div>
 
-        <header class="zt-post-header zt-detail-author-header">
-          <div class="zt-detail-author">
-            <img class="zt-avatar"
-                 src="${pageContext.request.contextPath}/assets/images/c85e75481a9f216601e5c9593baf1854.jpg"
-                 alt="기본 프로필">
-
-            <div class="zt-user-meta">
-              <div class="zt-detail-author-main">
-                <strong>
-                  <c:out value="${empty post.writer ? '익명' : post.writer}"/>
-                </strong>
-              </div>
-              <div class="zt-detail-author-sub">
-                <span><c:out value="${post.formattedCreateAt}"/></span>
-                <span>조회수 <c:out value="${post.viewCount}" default="0"/></span>
-              </div>
-            </div>
+        <div class="user-meta">
+          <div class="detail-author-main">
+            <strong>
+              <c:out value="${empty post.writer ? '익명' : post.writer}"/>
+            </strong>
           </div>
-
-          <%-- 수정 및 삭제 버튼 영역 --%>
-          <div class="zt-detail-owner-actions">
-            <a class="btn btn-outline-secondary btn-sm" href="${pageContext.request.contextPath}/edit-post?postId=${post.postId}">수정</a>
-            <form action="${pageContext.request.contextPath}/delete-post" method="post" onsubmit="return confirm('정말 삭제하시겠습니까?');" style="display:inline;">
-              <input type="hidden" name="postId" value="${post.postId}">
-              <button type="submit" class="btn btn-outline-danger btn-sm">삭제</button>
-            </form>
+          <div class="detail-author-sub">
+            <span><c:out value="${post.formattedCreateAt}"/></span>
+            <span>조회수 <c:out value="${post.viewCount}" default="0"/></span>
           </div>
-        </header>
+        </div>
+
+        <%-- 수정 및 삭제 버튼 영역 --%>
+        <div class="detail-owner-actions">
+          <a class="btn btn-outline-secondary btn-sm" href="${pageContext.request.contextPath}/edit-post?postId=${post.postId}">수정</a>
+          <form action="${pageContext.request.contextPath}/delete-post" method="post" onsubmit="return confirm('정말 삭제하시겠습니까?');" style="display:inline;">
+            <input type="hidden" name="postId" value="${post.postId}">
+            <button type="submit" class="btn btn-outline-danger btn-sm">삭제</button>
+          </form>
+        </div>
 
         <c:choose>
           <c:when test="${not empty post.images}">
@@ -84,38 +76,50 @@
                        data-index="${status.index}">
 
                     <c:set var="path" value="${image.uploadPath}" />
+                    <c:set var="lowerPath" value="${fn:toLowerCase(path)}" />
+
+                    <%-- ⭐ 스마트 경로 정규화 (DB에 전체경로가 있든 파일명만 있든 중복 슬래시 없이 완벽 매핑) --%>
+                    <c:choose>
+                      <c:when test="${fn:startsWith(path, '/') || fn:startsWith(path, 'http')}">
+                        <c:set var="resolvedPath" value="${path}" />
+                      </c:when>
+                      <c:otherwise>
+                        <c:set var="resolvedPath" value="/uploads/post/${path}" />
+                      </c:otherwise>
+                    </c:choose>
 
                     <%-- 파일 확장자에 따른 분기 처리 --%>
                     <c:choose>
-                      <%-- 1. 이미지 파일인 경우 --%>
-                      <c:when test="${fn:endsWith(fn:toLowerCase(path), '.jpg') || fn:endsWith(fn:toLowerCase(path), '.jpeg') || fn:endsWith(fn:toLowerCase(path), '.png') || fn:endsWith(fn:toLowerCase(path), '.gif') || fn:endsWith(fn:toLowerCase(path), '.webp')}">
-                        <img src="${pageContext.request.contextPath}${image.uploadPath}"
+                      <%-- 1. 이미지 파일인 경우 (.webp 포함) --%>
+                      <c:when test="${fn:endsWith(lowerPath, '.jpg') || fn:endsWith(lowerPath, '.jpeg') || fn:endsWith(lowerPath, '.png') || fn:endsWith(lowerPath, '.gif') || fn:endsWith(lowerPath, '.webp')}">
+                        <img src="${resolvedPath}"
                              alt="${image.originName}"
                              style="width: 100%; height: 100%; object-fit: contain;">
                       </c:when>
 
-                      <%-- 2. 비디오 파일인 경우 --%>
-                      <c:when test="${fn:endsWith(fn:toLowerCase(path), '.mp4') || fn:endsWith(fn:toLowerCase(path), '.webm') || fn:endsWith(fn:toLowerCase(path), '.mov') || fn:endsWith(fn:toLowerCase(path), '.avi')}">
-                        <video src="${pageContext.request.contextPath}${image.uploadPath}"
+                      <%-- 2. 비디오 파일인 경우 (.webm 포함) --%>
+                      <c:when test="${fn:endsWith(lowerPath, '.mp4') || fn:endsWith(lowerPath, '.webm') || fn:endsWith(lowerPath, '.mov') || fn:endsWith(lowerPath, '.avi')}">
+                        <video src="${resolvedPath}"
                                controls
+                               preload="metadata"
                                style="width: 100%; height: 100%; object-fit: contain;"></video>
                       </c:when>
 
-                     <%-- 3. 오디오 파일인 경우 (확장자 추가 및 소문자 변환 확실히 적용) --%>
-                     <c:when test="${fn:endsWith(fn:toLowerCase(path), '.mp3') || fn:endsWith(fn:toLowerCase(path), '.wav') || fn:endsWith(fn:toLowerCase(path), '.ogg') || fn:endsWith(fn:toLowerCase(path), '.m4a') || fn:endsWith(fn:toLowerCase(path), '.flac')}">
-                         <div class="text-center text-white">
-                             <i class="bi bi-file-earmark-music display-1 mb-3"></i>
-                             <p><c:out value="${image.originName}"/></p>
-                             <audio src="${pageContext.request.contextPath}${image.uploadPath}" controls class="w-75"></audio>
-                         </div>
-                     </c:when>
+                      <%-- 3. 오디오 파일인 경우 --%>
+                      <c:when test="${fn:endsWith(lowerPath, '.mp3') || fn:endsWith(lowerPath, '.wav') || fn:endsWith(lowerPath, '.ogg') || fn:endsWith(lowerPath, '.m4a') || fn:endsWith(lowerPath, '.flac')}">
+                        <div class="text-center text-white">
+                            <i class="bi bi-file-earmark-music display-1 mb-3"></i>
+                            <p><c:out value="${image.originName}"/></p>
+                            <audio src="${resolvedPath}" controls class="w-75"></audio>
+                        </div>
+                      </c:when>
 
-                      <%-- 4. 그 외 일반 파일 (ZIP, PDF 등)인 경우 --%>
+                      <%-- 4. 그 외 일반 파일 --%>
                       <c:otherwise>
                         <div class="text-center text-white">
                           <i class="bi bi-file-earmark-arrow-down display-1 mb-3"></i>
                           <p class="mb-3"><c:out value="${image.originName}"/></p>
-                          <a href="${pageContext.request.contextPath}${image.uploadPath}" download class="btn btn-light btn-sm">
+                          <a href="${resolvedPath}" download class="btn btn-light btn-sm">
                             <i class="bi bi-download"></i> 파일 다운로드
                           </a>
                         </div>
@@ -145,10 +149,9 @@
             </div>
           </c:when>
           <c:otherwise>
-            <img class="rounded mb-3"
-                 src="${pageContext.request.contextPath}/assets/images/c85e75481a9f216601e5c9593baf1854.jpg"
-                 alt="등록된 파일이 없습니다"
-                 style="width: 100%; height: 400px; object-fit: cover;">
+            <div class="text-center text-white p-5 bg-dark rounded">
+              <p class="mb-0">등록된 파일이 없습니다.</p>
+            </div>
           </c:otherwise>
         </c:choose>
 
@@ -159,7 +162,6 @@
 </div>
 
 <script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
 </html>

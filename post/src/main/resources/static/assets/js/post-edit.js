@@ -192,14 +192,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 deleteImageIds.push(checkbox.value);
             });
 
-            // 3. 백엔드 수정 API 전송용 최종 Payload 구성 (Multipart)
+            // 3. 백엔드 수정 API 전송용 최종 Payload 구성 (개별 파라미터 방식)
             const finalPayload = new FormData();
-            finalPayload.append("postDto", new Blob([JSON.stringify(postDto)], { type: "application/json" }));
+            finalPayload.append("title", postDto.title);
+            finalPayload.append("place", postDto.place);
+            finalPayload.append("content", postDto.content);
+            finalPayload.append("transportCost", postDto.transportCost);
+            finalPayload.append("foodCost", postDto.foodCost);
+            finalPayload.append("otherCost", postDto.otherCost);
 
-            deleteImageIds.forEach(id => {
-                finalPayload.append("deleteImageIds", id);
+            // 체크된 삭제 이미지 ID 목록 수집 및 추가
+            editForm.querySelectorAll('input[name="deleteImageIds"]:checked').forEach(checkbox => {
+                finalPayload.append("deleteImageIds", checkbox.value);
             });
 
+            // 업로드된 새 파일 이름들 추가
             savedFileNames.forEach(name => {
                 finalPayload.append("savedFileNames", name);
             });

@@ -18,6 +18,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     let selectedFiles = [];
+
+    // 🌟 [추가] 서버에서 전달된 기존 파일(수정 모드)이 있다면 초기 파일 배열에 세팅
+    if (window.initialFiles && window.initialFiles.length > 0) {
+        selectedFiles = [...window.initialFiles];
+    }
+
     let currentImageIndex = 0;
     let currentSlideIndex = 0;
 
@@ -27,8 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp3", "audio/wave"
     ];
 
-    // 🌟 [수정] moveSlide 함수를 renderMainPreview 외부로 분리하여 전역 접근 가능하도록 설정
-    window.moveSlide = function(direction) {
+    window.moveSlide = function (direction) {
         const slides = document.querySelectorAll('.slide-item');
         if (slides.length <= 1) return;
 
@@ -83,7 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const isStringUrl = typeof file === "string";
         const previewUrl = isStringUrl ? file : URL.createObjectURL(file);
 
-        // 파일 유형 판별 (동영상 / 오디오 / 이미지)
         const isVideo = isStringUrl
             ? (file.includes(".mp4") || file.includes(".mov") || file.includes(".webm") || file.includes(".m4v") || file.includes(".qt"))
             : file.type.startsWith("video/");
@@ -94,7 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (emptyMessage) emptyMessage.style.display = "none";
 
-        // 기존 미디어 요소 숨기기 초기화
         if (mainPreview) {
             mainPreview.hidden = true;
             mainPreview.removeAttribute("src");
@@ -136,7 +139,6 @@ document.addEventListener("DOMContentLoaded", () => {
             audioPreview.style.display = "block";
 
         } else {
-            // 이미지 파일인 경우
             if (existingVideo) existingVideo.removeAttribute("src");
             if (existingAudio) existingAudio.removeAttribute("src");
 
@@ -248,6 +250,12 @@ document.addEventListener("DOMContentLoaded", () => {
         imageInput.files = dataTransfer.files;
     }
 
+    // 초기 파일이 존재할 경우 첫 화면 렌더링 실행
+    if (selectedFiles.length > 0) {
+        renderMainPreview(0);
+        renderThumbnails();
+    }
+
     if (prevBtn) {
         prevBtn.addEventListener("click", () => {
             if (selectedFiles.length <= 1) return;
@@ -296,15 +304,17 @@ document.addEventListener("DOMContentLoaded", () => {
         postForm.addEventListener("submit", async (e) => {
             e.preventDefault();
 
+            const submitBtn = postForm.querySelector("button[type='submit']");
+            if (submitBtn) submitBtn.disabled = true;
+
             try {
                 const savedFileNames = [];
 
                 for (const file of selectedFiles) {
-                    if (typeof file === "string") continue; // 기존 파일은 업로드 스킵
+                    if (typeof file === "string") continue; // 기존 파일(문자열 경로)은 업로드 스킵
 
                     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
                     let fileSavedName = null;
-
                     const fileUid = 'file_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
 
                     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
@@ -329,7 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             throw new Error(result.message || "청크 업로드 중 오류가 발생했습니다.");
                         }
 
-                        if (result.data.completed) {
+                        if (result.data && result.data.completed) {
                             fileSavedName = result.data.savedFileName;
                         }
                     }
@@ -339,51 +349,63 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
-                const formDataObj = new FormData(postForm);
-                const postId = formDataObj.get("postId");
+                const titleVal = document.querySelector("#post-title")?.value || "";
+                const placeVal = document.querySelector("#post-place")?.value || "";
+                const contentVal = document.querySelector("#post-content")?.value || "";
+                const transportCostVal = document.querySelector("#transport-cost")?.value || "0";
+                const foodCostVal = document.querySelector("#food-cost")?.value || "0";
+                const otherCostVal = document.querySelector("#other-cost")?.value || "0";
 
-                const postDto = {
-                    postId: postId ? Number(postId) : null,
-                    title: formDataObj.get("title"),
-                    place: formDataObj.get("place"),
-                    content: formDataObj.get("content"),
-                    transportCost: Number(formDataObj.get("transportCost") || 0),
-                    foodCost: Number(formDataObj.get("foodCost") || 0),
-                    otherCost: Number(formDataObj.get("otherCost") || 0),
-                    writer: formDataObj.get("writer")
-                };
+                const postIdInput = document.querySelector("input[name='postId']") || document.querySelector("#post-id");
+                const postId = postIdInput ? postIdInput.value : null;
 
-                const finalPayload = new FormData();
-                finalPayload.append("postDto", new Blob([JSON.stringify(postDto)], {type: "application/json"}));
+                const formData = new FormData();
+                formData.append("title", titleVal);
+                formData.append("place", placeVal);
+                formData.append("content", contentVal);
+                formData.append("transportCost", transportCostVal);
+                formData.append("foodCost", foodCostVal);
+                formData.append("otherCost", otherCostVal);
 
-                savedFileNames.forEach((name) => {
-                    finalPayload.append("savedFileNames", name);
-                });
+                // 🌟 [핵심 수정] 값이 존재할 때만 append (빈 문자열 전송에 따른 500 에러 원천 차단)
+                if (savedFileNames && savedFileNames.length > 0) {
+                    savedFileNames.forEach((name) => {
+                        formData.append("savedFileNames", name);
+                    });
+                }
 
-                const deleteImageCheckboxes = document.querySelectorAll("input[name='deleteImageIds']:checked");
-                deleteImageCheckboxes.forEach((chk) => {
-                    finalPayload.append("deleteImageIds", chk.value);
-                });
+                if (postId) {
+                    const deleteImageCheckboxes = document.querySelectorAll("input[name='deleteImageIds']:checked");
+                    if (deleteImageCheckboxes && deleteImageCheckboxes.length > 0) {
+                        deleteImageCheckboxes.forEach((chk) => {
+                            formData.append("deleteImageIds", chk.value);
+                        });
+                    }
+                }
 
-                const url = postId ? `/api/posts/${postId}` : "/api/posts";
-                const method = postId ? "PUT" : "POST";
+                const url = postId ? `/api/posts/${postId}/update` : "/api/posts";
+                const method = "POST";
 
                 const postResponse = await fetch(url, {
                     method: method,
-                    body: finalPayload
+                    body: formData
                 });
 
                 const postResult = await postResponse.json();
-                if (postResult.success) {
-                    alert(postId ? "게시글이 수정되었습니다." : "게시글이 등록되었습니다.");
+                const isSuccess = postResponse.ok && (postResult.success === true || postResult.status === "SUCCESS");
+
+                if (isSuccess) {
+                    alert(postId ? "게시글이 성공적으로 수정되었습니다." : "게시글이 성공적으로 등록되었습니다.");
                     window.location.href = postId ? `/detail?postId=${postId}` : "/main-post";
                 } else {
-                    alert("처리 실패: " + postResult.message);
+                    alert("처리 실패: " + (postResult.message || "알 수 없는 오류"));
+                    if (submitBtn) submitBtn.disabled = false;
                 }
 
             } catch (error) {
                 console.error("에러 발생:", error);
                 alert("오류가 발생했습니다: " + error.message);
+                if (submitBtn) submitBtn.disabled = false;
             }
         });
     }
