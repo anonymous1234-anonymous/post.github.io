@@ -223,8 +223,10 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 let savedFileNames = [];
 
-                // 1. 파일 청크 단위 업로드 수행
+                // 1. 새로 추가된 파일(File 객체인 경우만) 청크 단위 업로드 수행
                 for (const file of selectedFiles) {
+                    if (typeof file === "string") continue; // 기존 파일(문자열 URL)은 업로드 스킵
+
                     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
                     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
                     const fileUid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'file-' + Date.now();
@@ -262,41 +264,48 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
-                // 2 & 3. 백엔드로 보낼 최종 FormData 구성 (multipart/form-data)
+                // 2. 최종 Payload 구성
                 const finalPayload = new FormData();
 
-                const titleEl = form.querySelector('#post-title');
-                const placeEl = form.querySelector('#post-place');
-                const contentEl = form.querySelector('#post-content');
-                const transportEl = form.querySelector('#transport-cost');
-                const foodEl = form.querySelector('#food-cost');
-                const otherEl = form.querySelector('#other-cost');
+                const postIdInput = form.querySelector('input[name="postId"]');
+                const postId = postIdInput ? postIdInput.value : null;
 
-                if (titleEl) finalPayload.append("title", titleEl.value);
-                if (placeEl) finalPayload.append("place", placeEl.value);
-                if (contentEl) finalPayload.append("content", contentEl.value);
-                if (transportEl) finalPayload.append("transportCost", transportEl.value || 0);
-                if (foodEl) finalPayload.append("foodCost", foodEl.value || 0);
-                if (otherEl) finalPayload.append("otherCost", otherEl.value || 0);
+                finalPayload.append("title", form.querySelector('#post-title')?.value || "");
+                finalPayload.append("place", form.querySelector('#post-place')?.value || "");
+                finalPayload.append("content", form.querySelector('#post-content')?.value || "");
+                finalPayload.append("transportCost", form.querySelector('#transport-cost')?.value || 0);
+                finalPayload.append("foodCost", form.querySelector('#food-cost')?.value || 0);
+                finalPayload.append("otherCost", form.querySelector('#other-cost')?.value || 0);
 
-                // 병합된 파일 이름 리스트 추가
+                // 새로 업로드된 파일 이름들 추가
                 savedFileNames.forEach(name => {
                     finalPayload.append("savedFileNames", name);
                 });
 
-                // 4. 최종 게시글 등록 API 호출 (POST /api/posts)
-                const finalRes = await fetch('/api/posts', {
-                    method: 'POST',
+                // 🌟 수정일 경우: 삭제할 기존 이미지 ID들 추가
+                if (postId) {
+                    const deleteImageCheckboxes = form.querySelectorAll("input[name='deleteImageIds']:checked");
+                    deleteImageCheckboxes.forEach((chk) => {
+                        finalPayload.append("deleteImageIds", chk.value);
+                    });
+                }
+
+                // 3. API 주소 및 메서드 동적 분기 (등록: POST /api/posts, 수정: PUT /api/posts/{postId})
+                const url = postId ? `/api/posts/${postId}` : '/api/posts';
+                const method = postId ? 'PUT' : 'POST';
+
+                const finalRes = await fetch(url, {
+                    method: method,
                     body: finalPayload
                 });
 
                 const finalResult = await finalRes.json();
 
                 if (finalRes.ok && finalResult.success) {
-                    alert("게시글이 성공적으로 등록되었습니다!");
-                    location.href = "/main-post";
+                    alert(postId ? "게시글이 성공적으로 수정되었습니다!" : "게시글이 성공적으로 등록되었습니다!");
+                    location.href = postId ? `/detail?postId=${postId}` : "/main-post";
                 } else {
-                    alert("게시글 등록에 실패했습니다: " + (finalResult.message || ""));
+                    alert("처리에 실패했습니다: " + (finalResult.message || ""));
                     if (submitBtn) submitBtn.disabled = false;
                 }
 
@@ -305,6 +314,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert("오류가 발생했습니다: " + error.message);
                 if (submitBtn) submitBtn.disabled = false;
             }
-        }); // 👈 누락되어 있던 폼 이벤트 리스너 닫는 괄호
-    } // 👈 누락되어 있던 form 조건문 닫는 괄호
-}); // 👈 누락되어 있던 DOMContentLoaded 닫는 괄호
+        });
+    }
+});
