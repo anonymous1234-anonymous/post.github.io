@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!doctype html>
 <html lang="ko">
 <head>
@@ -7,8 +8,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="나만의 게시물 메인">
   <title>나만의 게시물 | post</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/post-detail.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
 </head>
@@ -67,36 +66,17 @@
                       <div class="col">
                           <div class="card h-100 shadow-sm">
 
-      <div class="col">
-          <div class="card h-100 shadow-sm">
-              <%-- 🌟 post.thumbnailPath 대신 post.images 리스트를 직접 참조하도록 수정 --%>
-              <c:choose>
-                  <c:when test="${not empty post.images}">
-                      <img src="${pageContext.request.contextPath}${post.images[0].uploadPath}" class="card-img-top" alt="썸네일" style="height: 200px; object-fit: cover;">
-                  </c:when>
-                  <c:otherwise>
-                      <%-- 이미지가 없을 때 보여줄 대체 영역 (선택사항) --%>
-                      <div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 200px;">
-                          <i class="bi bi-image fs-1"></i>
-                      </div>
-                  </c:otherwise>
-              </c:choose>
-
-              <div class="card-body">
-                  <h5 class="card-title fw-bold">
-                      <a href="${pageContext.request.contextPath}/detail?postId=${post.postId}" class="text-decoration-none text-dark">
-                          ${post.title}
-                      </a>
-                  </h5>
-                  <p class="card-text text-muted text-truncate">${post.content}</p>
-              </div>
-              <div class="card-footer bg-white d-flex justify-content-between align-items-center text-muted small">
-                  <span>${post.writer}</span>
-                  <span>${post.formattedCreateAt}</span>
-              </div>
-          </div>
-      </div>
-
+                              <c:choose>
+                                  <c:when test="${not empty post.thumbnailPath}">
+                                      <c:set var="imagePath" value="${pageContext.request.contextPath}${post.thumbnailPath}" />
+                                      <img src="${imagePath}" class="card-img-top" alt="썸네일" style="height: 200px; object-fit: cover;">
+                                  </c:when>
+                                  <c:otherwise>
+                                      <div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 200px;">
+                                          <i class="bi bi-image fs-1"></i>
+                                      </div>
+                                  </c:otherwise>
+                              </c:choose>
 
                               <div class="card-body">
                                   <h5 class="card-title fw-bold">
@@ -106,10 +86,12 @@
                                   </h5>
                                   <p class="card-text text-muted text-truncate">${post.content}</p>
                               </div>
+
                               <div class="card-footer bg-white d-flex justify-content-between align-items-center text-muted small">
                                   <span>${post.writer}</span>
                                   <span>${post.formattedCreateAt}</span>
                               </div>
+
                           </div>
                       </div>
                   </c:forEach>
@@ -127,7 +109,6 @@
               </div>
           </c:otherwise>
       </c:choose>
-
     </main>
   </div>
 </div>

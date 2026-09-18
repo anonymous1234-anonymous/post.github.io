@@ -126,10 +126,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ==========================================
-    // [핵심] 수정 폼 제출 시 청크 업로드 및 API 연동
+    // [수정된 최종 폼 제출부]
     // ==========================================
     editForm.addEventListener("submit", async (e) => {
-        e.preventDefault(); // 기본 폼 제출 차단
+        e.preventDefault();
 
         const submitBtn = editForm.querySelector("button[type='submit']");
         if (submitBtn) submitBtn.disabled = true;
@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             let savedFileNames = [];
 
-            // 1. 새로 추가된 파일들이 있다면 각각 청크 단위로 나누어 업로드
+            // 1. 새로 추가된 파일 청크 업로드
             for (const file of newSelectedFiles) {
                 const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
                 const fileUid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'file-' + Date.now();
@@ -157,12 +157,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     const response = await fetch('/api/posts/upload-chunk', {
                         method: 'POST',
-                        body: chunkFormData // 브라우저가 multipart boundary 자동 설정
+                        body: chunkFormData
                     });
 
                     const result = await response.json();
                     if (!result.success) {
-                        throw new Error(result.message || "청크 업로드 중 오류가 발생했습니다.");
+                        throw new Error(result.message || "청크 업로드 실패");
                     }
 
                     if (result.data && result.data.completed) {
@@ -175,33 +175,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // 2. 수정 폼 데이터 수집
-            const postId = editForm.querySelector('input[name="postId"]').value;
-            const postDto = {
-                title: editForm.querySelector('#post-title') ? editForm.querySelector('#post-title').value : "",
-                place: editForm.querySelector('#post-place') ? editForm.querySelector('#post-place').value : "",
-                content: editForm.querySelector('#post-content') ? editForm.querySelector('#post-content').value : "",
-                transportCost: editForm.querySelector('#transport-cost') ? Number(editForm.querySelector('#transport-cost').value) : 0,
-                foodCost: editForm.querySelector('#food-cost') ? Number(editForm.querySelector('#food-cost').value) : 0,
-                otherCost: editForm.querySelector('#other-cost') ? Number(editForm.querySelector('#other-cost').value) : 0
-            };
-
-            // 체크된 삭제 이미지 ID 목록 수집
-            const deleteImageIds = [];
-            editForm.querySelectorAll('input[name="deleteImageIds"]:checked').forEach(checkbox => {
-                deleteImageIds.push(checkbox.value);
-            });
-
-            // 3. 백엔드 수정 API 전송용 최종 Payload 구성 (개별 파라미터 방식)
+            // 2. 최종 Payload 구성 (FormData)
             const finalPayload = new FormData();
-            finalPayload.append("title", postDto.title);
-            finalPayload.append("place", postDto.place);
-            finalPayload.append("content", postDto.content);
-            finalPayload.append("transportCost", postDto.transportCost);
-            finalPayload.append("foodCost", postDto.foodCost);
-            finalPayload.append("otherCost", postDto.otherCost);
+            const postId = editForm.querySelector('input[name="postId"]').value;
 
-            // 체크된 삭제 이미지 ID 목록 수집 및 추가
+            finalPayload.append("title", editForm.querySelector('#post-title')?.value || "");
+            finalPayload.append("place", editForm.querySelector('#post-place')?.value || "");
+            finalPayload.append("content", editForm.querySelector('#post-content')?.value || "");
+            finalPayload.append("transportCost", editForm.querySelector('#transport-cost')?.value || 0);
+            finalPayload.append("foodCost", editForm.querySelector('#food-cost')?.value || 0);
+            finalPayload.append("otherCost", editForm.querySelector('#other-cost')?.value || 0);
+
+            // 체크된 삭제 이미지 ID들 추가
             editForm.querySelectorAll('input[name="deleteImageIds"]:checked').forEach(checkbox => {
                 finalPayload.append("deleteImageIds", checkbox.value);
             });
@@ -211,9 +196,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 finalPayload.append("savedFileNames", name);
             });
 
-            // 4. 최종 수정 요청 전송 (PUT /api/posts/{postId} 또는 백엔드 수정 API 주소에 맞게 설정)
-            const updateResponse = await fetch(`/api/posts/${postId}`, {
-                method: 'PUT',
+            // 3. 백엔드 컨트롤러와 주소/메서드 방식 일치시키기 (PUT -> POST, 경로 수정)
+            const updateResponse = await fetch(`/api/posts/${postId}/update`, {
+                method: 'POST', // 💡 컨트롤러의 @PostMapping("/{postId}/update")와 일치시킴
                 body: finalPayload
             });
 
@@ -221,16 +206,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (updateResponse.ok && updateResult.success) {
                 alert("게시글이 성공적으로 수정되었습니다!");
-                location.href = `/main-post`; // 수정 후 이동할 페이지 경로
+                location.href = `/main-post`;
             } else {
-                alert("게시글 수정에 실패했습니다: " + (updateResult.message || ""));
+                alert("수정 실패: " + (updateResult.message || ""));
                 if (submitBtn) submitBtn.disabled = false;
             }
 
         } catch (error) {
-            console.error("수정 및 업로드 중 에러 발생:", error);
+            console.error("오류 발생:", error);
             alert("오류가 발생했습니다: " + error.message);
             if (submitBtn) submitBtn.disabled = false;
         }
     });
-});
+})

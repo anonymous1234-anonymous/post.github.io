@@ -44,7 +44,7 @@ public class PostService {
     }
 
     /**
-     * 대용량 파일 청크(조각) 저장 및 병합 로직 (실제 저장 수행)
+     * 대용량 파일 청크(조각) 저장 및 병합 로직
      */
     public String processChunkUpload(ChunkDto dto) throws IOException {
         File tempDir = new File(postUploadDir + "/temp/" + dto.getFileUid());
@@ -52,11 +52,9 @@ public class PostService {
             tempDir.mkdirs();
         }
 
-        // 1. 현재 조각 파일을 임시 폴더에 저장
         File chunkFile = new File(tempDir, "chunk_" + dto.getChunkIndex());
         dto.getFile().transferTo(chunkFile);
 
-        // 2. 모든 조각이 다 전송되었는지 확인
         boolean isAllUploaded = true;
         for (int i = 0; i < dto.getTotalChunks(); i++) {
             File f = new File(tempDir, "chunk_" + i);
@@ -66,7 +64,6 @@ public class PostService {
             }
         }
 
-        // 3. 마지막 조각까지 다 도착했다면 하나로 병합 (Merge)
         if (isAllUploaded) {
             String originName = (dto.getOriginalName() != null) ? dto.getOriginalName() : "unknown";
             String savedFileName = UUID.randomUUID().toString() + "_" + originName;
@@ -82,11 +79,10 @@ public class PostService {
                 for (int i = 0; i < dto.getTotalChunks(); i++) {
                     File f = new File(tempDir, "chunk_" + i);
                     Files.copy(f.toPath(), fos);
-                    f.delete(); // 병합 후 개별 조각 파일 삭제
+                    f.delete();
                 }
             }
 
-            // 임시 폴더 삭제
             if (tempDir.exists()) {
                 tempDir.delete();
             }
@@ -98,7 +94,7 @@ public class PostService {
     }
 
     /**
-     * 게시글 등록 (검증 + 저장 + 미디어 파일 업로드) - 일반 업로드용
+     * 게시글 등록 (일반 업로드)
      */
     @Transactional
     public void save(PostDto postDto, List<MultipartFile> mediaFiles) throws IOException {
@@ -114,9 +110,12 @@ public class PostService {
 
                 SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, WEB_PREFIX);
 
+                // 🌟 절대 경로 대신 파일 이름만 추출해서 저장 (400 에러 방지)
+                String fileName = new File(savedFile.getPath()).getName();
+
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(savedFile.getOriginalName())
-                        .uploadPath(savedFile.getPath())
+                        .uploadPath(fileName)
                         .imageOrder(fileOrder++)
                         .build();
 
@@ -129,7 +128,7 @@ public class PostService {
     }
 
     /**
-     * 청크 업로드 완료된 파일 이름 리스트를 받아 게시글 등록 처리
+     * 청크 업로드 완료된 파일 이름 리스트를 받아 게시글 등록
      */
     @Transactional
     public void saveWithFiles(PostDto postDto, List<String> savedFileNames) {
@@ -141,11 +140,10 @@ public class PostService {
             for (String savedFileName : savedFileNames) {
                 int underscoreIndex = savedFileName.indexOf("_");
                 String originName = (underscoreIndex != -1) ? savedFileName.substring(underscoreIndex + 1) : savedFileName;
-                String uploadPath = WEB_PREFIX + "/" + savedFileName;
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(originName)
-                        .uploadPath(uploadPath)
+                        .uploadPath(savedFileName) // 🌟 순수 파일명만 저장
                         .imageOrder(fileOrder++)
                         .build();
 
@@ -158,7 +156,7 @@ public class PostService {
     }
 
     /**
-     * 게시글 수정 (정보 수정 + 기존 미디어 삭제 + 새 미디어 추가) - 일반 수정용
+     * 게시글 수정
      */
     @Transactional
     public void update(PostDto postDto, List<Long> deleteImageIds, List<MultipartFile> mediaFiles) throws IOException {
@@ -182,10 +180,11 @@ public class PostService {
                 if (file.isEmpty()) continue;
 
                 SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, WEB_PREFIX);
+                String fileName = new File(savedFile.getPath()).getName();
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(savedFile.getOriginalName())
-                        .uploadPath(savedFile.getPath())
+                        .uploadPath(fileName) // 🌟 순수 파일명만 저장
                         .imageOrder(imageOrder++)
                         .build();
 
@@ -198,7 +197,7 @@ public class PostService {
     }
 
     /**
-     * 청크 업로드를 통해 수정할 때 사용하는 메서드
+     * 청크 업로드를 통한 수정
      */
     @Transactional
     public void updateWithFiles(PostDto postDto, List<Long> deleteImageIds, List<String> savedFileNames) {
@@ -221,11 +220,9 @@ public class PostService {
                 int underscoreIndex = savedFileName.indexOf("_");
                 String originName = (underscoreIndex != -1) ? savedFileName.substring(underscoreIndex + 1) : savedFileName;
 
-                String uploadPath = WEB_PREFIX + "/" + savedFileName;
-
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(originName)
-                        .uploadPath(uploadPath)
+                        .uploadPath(savedFileName) // 🌟 순수 파일명만 저장
                         .imageOrder(imageOrder++)
                         .build();
 
@@ -237,9 +234,6 @@ public class PostService {
         }
     }
 
-    /**
-     * 🌟 [수정됨] 메인 피드 페이지네이션 목록 조회 시 각 게시글의 이미지 목록을 함께 세팅하도록 보완
-     */
     public PageResponse getPostPage(PageRequest pageRequest, String sort, String keyword) {
         if (pageRequest.getPage() < 1) {
             pageRequest.setPage(1);
@@ -248,7 +242,6 @@ public class PostService {
         int totalCount = postMapper.countAll(keyword);
         List<PostDto> list = postMapper.findPage(sort, keyword, pageRequest.getOffset(), pageRequest.getSize());
 
-        // 가져온 게시글 목록에 각각 이미지 정보를 매핑해 줍니다.
         for (PostDto post : list) {
             List<PostImageDto> images = postMapper.findImagesByPostId(post.getPostId());
             post.setImages(images);
@@ -257,9 +250,6 @@ public class PostService {
         return new PageResponse(list, totalCount, pageRequest);
     }
 
-    /**
-     * 🌟 [수정됨] 일반 목록 조회 시에도 이미지 목록을 함께 세팅하도록 보완
-     */
     public List<PostDto> findPage(String sort, String keyword, int offset, int size) {
         List<PostDto> list = postMapper.findPage(sort, keyword, offset, size);
         for (PostDto post : list) {
@@ -271,13 +261,10 @@ public class PostService {
 
     public PostDto findById(Long postId) {
         PostDto post = postMapper.findById(postId);
-        if (post == null) {
-            return null;
+        if (post != null) {
+            List<PostImageDto> images = postMapper.findImagesByPostId(postId);
+            post.setImages(images);
         }
-
-        List<PostImageDto> images = postMapper.findImagesByPostId(postId);
-        post.setImages(images);
-
         return post;
     }
 

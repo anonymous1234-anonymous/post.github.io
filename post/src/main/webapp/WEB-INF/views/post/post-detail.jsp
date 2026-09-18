@@ -9,8 +9,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="게시물 상세 페이지">
   <title>피드 상세 | post</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/post-detail.css">
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
 </head>
@@ -75,36 +73,22 @@
                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: ${status.first ? 'flex' : 'none'}; align-items: center; justify-content: center; background: #000;"
                        data-index="${status.index}">
 
-                    <%-- 🌟 변수 정의를 반복문 내부 상단에 정확히 위치시킵니다 --%>
-                    <c:set var="path" value="${image.uploadPath}" />
-                    <c:set var="lowerPath" value="${fn:toLowerCase(path)}" />
-
-                    <c:choose>
-                      <c:when test="${fn:startsWith(path, '/') || fn:startsWith(path, 'http')}">
-                        <c:set var="resolvedPath" value="${path}" />
-                      </c:when>
-                      <c:otherwise>
-                        <c:set var="resolvedPath" value="/uploads/post/${path}" />
-                      </c:otherwise>
-                    </c:choose>
+                    <c:set var="resolvedPath" value="${pageContext.request.contextPath}/uploads/post/${image.uploadPath}" />
+                    <c:set var="lowerPath" value="${fn:toLowerCase(image.uploadPath)}" />
 
                     <c:set var="isImage" value="${fn:contains(lowerPath, '.jpg') || fn:contains(lowerPath, '.jpeg') || fn:contains(lowerPath, '.png') || fn:contains(lowerPath, '.gif') || fn:contains(lowerPath, '.webp')}" />
                     <c:set var="isVideo" value="${fn:contains(lowerPath, '.mp4') || fn:contains(lowerPath, '.webm') || fn:contains(lowerPath, '.mov') || fn:contains(lowerPath, '.avi')}" />
                     <c:set var="isAudio" value="${fn:contains(lowerPath, '.mp3') || fn:contains(lowerPath, '.wav') || fn:contains(lowerPath, '.ogg') || fn:contains(lowerPath, '.m4a') || fn:contains(lowerPath, '.flac')}" />
 
-                    <%-- 파일 확장자에 따른 분기 처리 --%>
                     <c:choose>
-                      <%-- 1. 이미지 파일인 경우 --%>
                       <c:when test="${isImage}">
                         <img src="${resolvedPath}" alt="${image.originName}" style="width: 100%; height: 100%; object-fit: contain;">
                       </c:when>
 
-                      <%-- 2. 비디오 파일인 경우 (.webm 포함) --%>
                       <c:when test="${isVideo}">
                         <video src="${resolvedPath}" controls preload="metadata" style="width: 100%; height: 100%; object-fit: contain;"></video>
                       </c:when>
 
-                      <%-- 3. 오디오 파일인 경우 --%>
                       <c:when test="${isAudio}">
                         <div class="text-center text-white">
                             <i class="bi bi-file-earmark-music display-1 mb-3"></i>
@@ -113,7 +97,6 @@
                         </div>
                       </c:when>
 
-                      <%-- 4. 그 외 일반 파일 --%>
                       <c:otherwise>
                         <div class="text-center text-white">
                           <i class="bi bi-file-earmark-arrow-down display-1 mb-3"></i>

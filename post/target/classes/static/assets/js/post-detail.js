@@ -1,6 +1,68 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const maxFileCount = 10; // 최대 파일 제한 개수
 
+    // ==========================================
+    // [파트 1] 상세 보기 페이지 기능 (미디어 렌더링)
+    // ==========================================
+    const mediaContainer = document.querySelector("#post-media-container");
+    if (mediaContainer) {
+        const files = window.postFiles || [];
+
+        if (files.length > 0) {
+            mediaContainer.innerHTML = "";
+
+            files.forEach((file) => {
+                const fileNameLower = file.savedFileName.toLowerCase();
+
+                const isVideo = fileNameLower.endsWith(".webm") || fileNameLower.endsWith(".mp4") || fileNameLower.endsWith(".mov");
+                const isImage = fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif");
+                const isAudio = fileNameLower.endsWith(".mp3") || fileNameLower.endsWith(".wav");
+
+                const safeFileName = encodeURIComponent(file.savedFileName);
+                const fileUrl = `/api/files/view/${safeFileName}`;
+
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "zt-detail-media-item mb-3 text-center";
+
+                if (isImage) {
+                    itemDiv.innerHTML = `
+                        <img src="${fileUrl}" 
+                             alt="${file.originalName || '게시글 이미지'}" 
+                             style="max-width: 100%; max-height: 500px; width: auto; height: auto; object-fit: contain; border-radius: 8px;">
+                    `;
+                } else if (isVideo) {
+                    itemDiv.innerHTML = `
+                        <video src="${fileUrl}" 
+                               controls 
+                               preload="metadata" 
+                               style="max-width: 100%; max-height: 500px; width: 100%; height: auto; object-fit: contain; border-radius: 8px; background: #000;"></video>
+                    `;
+                } else if (isAudio) {
+                    itemDiv.innerHTML = `
+                        <div class="p-3 border rounded bg-light">
+                            <i class="bi bi-file-earmark-music display-4 mb-2"></i>
+                            <p class="mb-2">${file.originalName || '오디오 파일'}</p>
+                            <audio src="${fileUrl}" controls class="w-100"></audio>
+                        </div>
+                    `;
+                } else {
+                    itemDiv.innerHTML = `
+                        <div class="p-3 border rounded bg-light">
+                            <i class="bi bi-file-earmark-arrow-down display-4 mb-2"></i>
+                            <p class="mb-2">${file.originalName || '첨부 파일'}</p>
+                            <a href="${fileUrl}" download="${file.originalName}" class="btn btn-sm btn-outline-primary">파일 다운로드</a>
+                        </div>
+                    `;
+                }
+
+                mediaContainer.appendChild(itemDiv);
+            });
+        }
+    }
+
+    // ==========================================
+    // [파트 2] 글 작성/수정 페이지 기능 (업로드 및 폼 전송)
+    // ==========================================
+    const maxFileCount = 10;
     const uploader = document.querySelector("[data-post-image-uploader]");
     const imageInput = document.querySelector("#new-post-image");
     const emptyMessage = document.querySelector("#post-image-empty");
@@ -12,6 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const nextBtn = document.querySelector("#post-next-btn");
     const form = document.querySelector("form");
 
+    // 작성 페이지 요소들이 없으면 파트 2 실행 중단
     if (!uploader || !imageInput || !emptyMessage || !mainPreview || !thumbnailList || !imageCount) {
         return;
     }
@@ -36,6 +99,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderMainPreview(index) {
         if (selectedFiles.length === 0) {
+            if (currentPreviewUrl) {
+                URL.revokeObjectURL(currentPreviewUrl);
+                currentPreviewUrl = null;
+            }
             emptyMessage.style.display = "flex";
             mainPreview.hidden = true;
             mediaElement.style.display = "none";
@@ -46,16 +113,11 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        if (index >= selectedFiles.length) {
-            index = selectedFiles.length - 1;
-        }
-        if (index < 0) {
-            index = 0;
-        }
+        if (index >= selectedFiles.length) index = selectedFiles.length - 1;
+        if (index < 0) index = 0;
         currentImageIndex = index;
 
         const file = selectedFiles[index];
-
         if (currentPreviewUrl) {
             URL.revokeObjectURL(currentPreviewUrl);
         }
@@ -73,13 +135,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isImage) {
             mediaElement.innerHTML = `<img src="${currentPreviewUrl}" alt="${file.name}" style="max-width: 100%; max-height: 250px; width: auto; height: auto; object-fit: contain; border-radius: 8px;">`;
         } else if (isVideo) {
-            mediaElement.innerHTML = `<video src="${currentPreviewUrl}" controls preload="metadata" style="max-width: 100%; max-height: 250px; width: 100%; height: auto; object-fit: contain; border-radius: 8px; background: #000;"></video>`;
-            const videoEl = mediaElement.querySelector("video");
-            if (videoEl) videoEl.currentTime = 0.1;
-        } else if (isAudio) {
-            mediaElement.innerHTML = `<div class="text-center p-4"><i class="bi bi-file-earmark-music display-4 mb-2"></i><p>${file.name}</p><audio src="${currentPreviewUrl}" controls class="w-100"></audio></div>`;
-        } else {
-            mediaElement.innerHTML = `<div class="text-center p-4"><i class="bi bi-file-earmark-arrow-down display-4 mb-2"></i><p>${file.name}</p><small class="text-muted">파일이 정상적으로 등록되었습니다.</small></div>`;
+            mediaElement.innerHTML = `
+        <div class="text-center p-4">
+            <i class="bi bi-file-earmark-play-fill display-4 mb-2 text-danger"></i>
+            <p class="mb-1">${file.name}</p>
+            <small class="text-muted">동영상 파일이 선택되었습니다. (등록 시 재생됩니다)</small>
+        </div>
+    `;
         }
 
         imageCount.textContent = `${currentImageIndex + 1} / ${selectedFiles.length}`;
@@ -88,14 +150,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const hasMultiple = selectedFiles.length > 1;
             prevBtn.style.display = hasMultiple ? "block" : "none";
             nextBtn.style.display = hasMultiple ? "block" : "none";
-            prevBtn.style.zIndex = "30";
-            nextBtn.style.zIndex = "30";
         }
     }
 
     function renderThumbnails() {
         thumbnailList.innerHTML = "";
-
         selectedFiles.forEach((file, index) => {
             const item = document.createElement("div");
             item.className = "zt-post-thumbnail-item me-2 d-inline-block position-relative";
@@ -103,21 +162,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const button = document.createElement("button");
             button.type = "button";
             button.className = "zt-post-thumbnail btn p-0 border-0";
-
-            if (index === currentImageIndex) {
-                button.classList.add("active");
-            }
+            if (index === currentImageIndex) button.classList.add("active");
 
             const thumbContent = document.createElement("div");
-            thumbContent.style.width = "60px";
-            thumbContent.style.height = "60px";
-            thumbContent.style.borderRadius = "4px";
-            thumbContent.style.overflow = "hidden";
-            thumbContent.style.display = "flex";
-            thumbContent.style.alignItems = "center";
-            thumbContent.style.justifyContent = "center";
-            thumbContent.style.background = "#f1f3f5";
-            thumbContent.style.position = "relative";
+            thumbContent.style.cssText = "width: 60px; height: 60px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f1f3f5; position: relative;";
 
             const thumbnailUrl = URL.createObjectURL(file);
             const fileNameLower = file.name.toLowerCase();
@@ -127,46 +175,18 @@ document.addEventListener("DOMContentLoaded", () => {
             if (isImage) {
                 thumbContent.innerHTML = `<img src="${thumbnailUrl}" alt="${file.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
             } else if (isVideo) {
-                // 🌟 Canvas를 이용해 비디오 첫 프레임을 이미지로 캡처하여 안정적으로 썸네일 표시
-                const video = document.createElement("video");
-                video.src = thumbnailUrl;
-                video.crossOrigin = "anonymous";
-                video.muted = true;
-                video.playsInline = true;
-                video.currentTime = 0.1;
-
-                video.addEventListener("seeked", () => {
-                    try {
-                        const canvas = document.createElement("canvas");
-                        canvas.width = 60;
-                        canvas.height = 60;
-                        const ctx = canvas.getContext("2d");
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                        const img = document.createElement("img");
-                        img.src = canvas.toDataURL();
-                        img.style.cssText = "width: 100%; height: 100%; object-fit: cover;";
-
-                        thumbContent.innerHTML = "";
-                        thumbContent.append(img);
-
-                        // 동영상 재생 아이콘 오버레이 추가
-                        const icon = document.createElement("i");
-                        icon.className = "bi bi-play-fill position-absolute text-white";
-                        icon.style.cssText = "bottom: 2px; right: 2px; font-size: 14px; text-shadow: 0 0 2px rgba(0,0,0,0.8);";
-                        thumbContent.append(icon);
-                    } catch (e) {
-                        thumbContent.innerHTML = `<i class="bi bi-file-earmark-play text-dark" style="font-size: 1.5rem;"></i>`;
-                    }
-                });
-
-                thumbContent.append(video);
+                // 비디오는 블랍 로딩 에러를 방지하기 위해 안전하게 아이콘으로 표시합니다.
+                thumbContent.innerHTML = `
+                    <i class="bi bi-file-earmark-play-fill text-dark" style="font-size: 1.5rem;"></i>
+                    <span class="position-absolute bottom-0 end-0 badge bg-dark text-white" style="font-size: 8px; padding: 1px 3px;">VIDEO</span>
+                `;
+                URL.revokeObjectURL(thumbnailUrl);
             } else {
                 thumbContent.innerHTML = `<i class="bi bi-file-earmark-fill text-dark" style="font-size: 1.5rem;"></i>`;
+                URL.revokeObjectURL(thumbnailUrl);
             }
 
             button.appendChild(thumbContent);
-
             button.addEventListener("click", () => {
                 renderMainPreview(index);
                 renderThumbnails();
@@ -181,17 +201,12 @@ document.addEventListener("DOMContentLoaded", () => {
             removeButton.addEventListener("click", (e) => {
                 e.stopPropagation();
                 selectedFiles.splice(index, 1);
-
-                if (currentImageIndex >= selectedFiles.length) {
-                    currentImageIndex = Math.max(0, selectedFiles.length - 1);
-                }
-
+                currentImageIndex = Math.max(0, Math.min(currentImageIndex, selectedFiles.length - 1));
                 renderMainPreview(currentImageIndex);
                 renderThumbnails();
             });
 
-            item.append(button);
-            item.append(removeButton);
+            item.append(button, removeButton);
             thumbnailList.append(item);
         });
     }
@@ -221,24 +236,15 @@ document.addEventListener("DOMContentLoaded", () => {
         imageInput.value = "";
 
         const blockedExtensions = [".exe", ".zip", ".bat", ".cmd", ".sh", ".jar", ".msi", ".iso", ".dmg"];
-        const validFiles = newFiles.filter(file => {
-            const fileNameLower = file.name.toLowerCase();
-            return !blockedExtensions.some(ext => fileNameLower.endsWith(ext));
-        });
+        const validFiles = newFiles.filter(file => !blockedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)));
 
-        if (validFiles.length < newFiles.length) {
-            alert("보안상 실행 및 압축 파일은 업로드할 수 없습니다.");
-        }
-
+        if (validFiles.length < newFiles.length) alert("보안상 실행 및 압축 파일은 업로드할 수 없습니다.");
         if (validFiles.length === 0) return;
 
         const remainingCount = maxFileCount - selectedFiles.length;
-        if (validFiles.length > remainingCount) {
-            alert(`파일은 최대 ${maxFileCount}개까지만 선택할 수 있습니다.`);
-        }
+        if (validFiles.length > remainingCount) alert(`파일은 최대 ${maxFileCount}개까지만 선택할 수 있습니다.`);
 
         const filesToAdd = validFiles.slice(0, remainingCount);
-
         if (filesToAdd.length > 0) {
             selectedFiles = [...selectedFiles, ...filesToAdd];
             renderMainPreview(currentImageIndex);
@@ -249,7 +255,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (form) {
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
-
             const submitBtn = form.querySelector("button[type='submit']");
             if (submitBtn) submitBtn.disabled = true;
 
@@ -259,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 for (const file of selectedFiles) {
                     if (typeof file === "string") continue;
 
-                    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+                    const CHUNK_SIZE = 5 * 1024 * 1024;
                     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
                     const fileUid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'file-' + Date.now();
                     let fileSavedName = null;
@@ -276,28 +281,18 @@ document.addEventListener("DOMContentLoaded", () => {
                         formData.append("chunkIndex", chunkIndex);
                         formData.append("totalChunks", totalChunks);
 
-                        const chunkRes = await fetch('/api/posts/upload-chunk', {
-                            method: 'POST',
-                            body: formData
-                        });
-
+                        const chunkRes = await fetch('/api/posts/upload-chunk', { method: 'POST', body: formData });
                         const chunkResult = await chunkRes.json();
-                        if (!chunkResult.success) {
-                            throw new Error(chunkResult.message || "청크 업로드 실패");
-                        }
+                        if (!chunkResult.success) throw new Error(chunkResult.message || "청크 업로드 실패");
 
                         if (chunkResult.data && chunkResult.data.completed) {
                             fileSavedName = chunkResult.data.savedFileName;
                         }
                     }
-
-                    if (fileSavedName) {
-                        savedFileNames.push(fileSavedName);
-                    }
+                    if (fileSavedName) savedFileNames.push(fileSavedName);
                 }
 
                 const finalPayload = new FormData();
-
                 const postIdInput = form.querySelector('input[name="postId"]');
                 const postId = postIdInput ? postIdInput.value : null;
 
@@ -308,25 +303,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 finalPayload.append("foodCost", form.querySelector('#food-cost')?.value || 0);
                 finalPayload.append("otherCost", form.querySelector('#other-cost')?.value || 0);
 
-                savedFileNames.forEach(name => {
-                    finalPayload.append("savedFileNames", name);
-                });
+                savedFileNames.forEach(name => finalPayload.append("savedFileNames", name));
 
                 if (postId) {
-                    const deleteImageCheckboxes = form.querySelectorAll("input[name='deleteImageIds']:checked");
-                    deleteImageCheckboxes.forEach((chk) => {
+                    form.querySelectorAll("input[name='deleteImageIds']:checked").forEach(chk => {
                         finalPayload.append("deleteImageIds", chk.value);
                     });
                 }
 
-                const url = postId ? `/api/posts/${postId}` : '/api/posts';
-                const method = postId ? 'PUT' : 'POST';
-
-                const finalRes = await fetch(url, {
-                    method: method,
-                    body: finalPayload
-                });
-
+                const url = postId ? `/api/posts/${postId}/update` : '/api/posts';
+                const finalRes = await fetch(url, { method: 'POST', body: finalPayload });
                 const finalResult = await finalRes.json();
 
                 if (finalRes.ok && finalResult.success) {
@@ -336,7 +322,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     alert("처리에 실패했습니다: " + (finalResult.message || ""));
                     if (submitBtn) submitBtn.disabled = false;
                 }
-
             } catch (error) {
                 console.error("업로드 중 오류 발생:", error);
                 alert("오류가 발생했습니다: " + error.message);

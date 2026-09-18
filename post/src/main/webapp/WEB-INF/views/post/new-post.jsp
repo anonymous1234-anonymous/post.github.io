@@ -7,8 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="게시물 작성 페이지 / Post Creation Page">
   <title>새 게시물 / post | post</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
 </head>
 <body>
@@ -49,32 +47,29 @@
 
         <form class="row g-4"
               id="post-form"
+              action="${pageContext.request.contextPath}/new-post"
               method="post"
               enctype="multipart/form-data">
 
-
           <div class="col-lg-6">
             <div class="zt-post-image-uploader" data-post-image-uploader>
+        <!-- 수정 후 (id="post-main-preview" 추가) -->
+        <div id="post-main-preview" class="zt-post-main-preview position-relative" style="min-height: 250px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 8px; overflow: hidden;">
 
-              <div class="zt-post-main-preview position-relative" style="min-height: 250px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 8px; overflow: hidden;">
-                <div id="post-image-empty" class="zt-post-image-empty text-center p-4">
-                  <i class="bi bi-folder-plus display-5"></i>
-                  <strong>파일을 선택하세요</strong>
-                  <p class="mb-0"><small>이미지, 동영상, 오디오 등 최대 10개까지 선택할 수 있습니다.</small></p>
-                </div>
+       <!-- 빈 상태 메시지 -->
+     <div id="post-image-empty" class="zt-post-image-empty text-center p-4">
+    <i class="bi bi-folder-plus display-5"></i>
+    <strong>파일을 선택하세요</strong>
+    <p class="mb-0"><small>이미지, 동영상, 오디오 등 최대 10개까지 선택할 수 있습니다.</small></p>
+  </div>
 
-                <div id="dynamic-media-view" style="width: 100%; height: 100%; display: none; align-items: center; justify-content: center;"></div>
+  <!-- 통합 메인 미디어 뷰어 영역 (이미지, 비디오, 오디오 모두 여기서 렌더링) -->
+  <div id="dynamic-media-view" style="width: 100%; height: 100%; display: none; align-items: center; justify-content: center;"></div>
 
-                <img id="post-main-preview"
-                     class="zt-post-main-image"
-                     src=""
-                     alt="선택한 파일 미리보기"
-                     hidden>
-
-                <button type="button" id="post-prev-btn" class="zt-slider-btn zt-prev-btn" style="display: none; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">〈</button>
-                <button type="button" id="post-next-btn" class="zt-slider-btn zt-next-btn" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">〉</button>
-              </div>
-
+  <!-- 슬라이더 버튼 -->
+  <button type="button" id="post-prev-btn" class="zt-slider-btn zt-prev-btn" style="display: none; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">〈</button>
+  <button type="button" id="post-next-btn" class="zt-slider-btn zt-next-btn" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">〉</button>
+  </div>   
               <div class="zt-post-thumbnail-row mt-2">
                 <div id="post-thumbnail-list" class="zt-post-thumbnail-list"></div>
 
@@ -174,7 +169,7 @@
 
   </div>
 </div>
-
+<script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
