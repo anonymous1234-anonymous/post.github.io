@@ -1,13 +1,33 @@
 package com.post.post.dto;
 
-import lombok.Data;
+
 import org.springframework.web.multipart.MultipartFile;
 
-@Data
+
 public class ChunkDto {
-    private String fileUid;      // 파일 고유 식별자 (UUID) - 여러 파일이 동시에 업로드될 때 조각들을 구분하는 용도
-    private String originalName; // 원본 파일명
-    private int chunkIndex;      // 현재 조각 번호 (0부터 시작)
-    private int totalChunks;     // 총 조각 개수
-    private MultipartFile file;  // 쪼개진 조각 파일 데이터
+    private MultipartFile file;
+    private String uploadId; // 추가
+    private String fileUid;  // 기존에 쓰던 것과 병행하거나 통일
+    private int chunkIndex;
+    private int totalChunks;
+    private String originalName;
+
+    // Getter & Setter 추가
+    public String getUploadId() {
+        return uploadId != null ? uploadId : fileUid; // 둘 중 하나로 호환되도록 처리 가능
+    }
+    public void setUploadId(String uploadId) { this.uploadId = uploadId; }
+
+    public String getFileUid() { return fileUid; }
+    public void setFileUid(String fileUid) { this.fileUid = fileUid; }
+
+    // ... 나머지 필드의 Getter / Setter 생략하지 않고 유지 ...
+    public MultipartFile getFile() { return file; }
+    public void setFile(MultipartFile file) { this.file = file; }
+    public int getChunkIndex() { return chunkIndex; }
+    public void setChunkIndex(int chunkIndex) { this.chunkIndex = chunkIndex; }
+    public int getTotalChunks() { return totalChunks; }
+    public void setTotalChunks(int totalChunks) { this.totalChunks = totalChunks; }
+    public String getOriginalName() { return originalName; }
+    public void setOriginalName(String originalName) { this.originalName = originalName; }
 }

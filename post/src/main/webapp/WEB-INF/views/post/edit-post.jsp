@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt"%>
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!doctype html>
 <html lang="ko">
@@ -8,7 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="게시물 수정 페이지">
   <title>게시물 수정 | post</title>
-   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/common.css">
 </head>
 <body>
 <div class="zt-app">
@@ -19,10 +20,9 @@
     </a>
   </header>
   <nav class="zt-mobile-nav" aria-label="모바일 메뉴">
-    <a href="${pageContext.request.contextPath}/home" class="" aria-label="home"><i class="bi bi-house"></i></a>
-    <a href="${pageContext.request.contextPath}/main-post" class="" aria-label="post"><i class="bi bi-grid-3x3-gap"></i></a>
-    <a href="${pageContext.request.contextPath}/new-post" class="" aria-label="new"><i class="bi bi-plus-square"></i></a>
-
+    <a href="${pageContext.request.contextPath}/home" aria-label="home"><i class="bi bi-house"></i></a>
+    <a href="${pageContext.request.contextPath}/main-post" aria-label="post"><i class="bi bi-grid-3x3-gap"></i></a>
+    <a href="${pageContext.request.contextPath}/new-post" aria-label="new"><i class="bi bi-plus-square"></i></a>
   </nav>
 
   <div class="zt-layout">
@@ -34,103 +34,62 @@
     <main class="zt-content">
 
       <header class="zt-page-header">
-        <h1>게시글 수정</h1>
-        <p>사진, 동영상, 동선, 경비와 태그를 수정합니다.</p>
+        <h1>게시물 수정하기</h1>
+        <p>사진, 동영상 및 게시물 정보를 수정합니다.</p>
       </header>
 
       <section class="zt-panel zt-profile-card">
+        <c:if test="${not empty errorMessage}">
+          <div class="alert alert-danger" role="alert">
+            <c:out value="${errorMessage}"/>
+          </div>
+        </c:if>
+
+        <%-- 폼 태그 (enctype 및 id 설정) --%>
         <form class="row g-4"
-              action="${pageContext.request.contextPath}/edit-post"
+              id="post-form"
               method="post"
               enctype="multipart/form-data">
 
+          <%-- 🔑 핵심: 자바스크립트가 postId를 읽어갈 수 있도록 하는 hidden 태그 --%>
           <input type="hidden" name="postId" value="${post.postId}">
 
           <div class="col-lg-6">
             <div class="zt-post-image-uploader" data-post-image-uploader>
 
-              <h2 class="h5 mb-3">등록된 파일 미리보기</h2>
-              <div class="zt-post-main-preview position-relative" style="min-height: 350px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 8px; overflow: hidden;">
-
-                <c:choose>
-                  <c:when test="${not empty post.images}">
-                    <c:set var="firstPath" value="${fn:toLowerCase(post.images[0].uploadPath)}" />
-
-                    <%-- 첫 번째 파일이 동영상인 경우 --%>
-                    <c:choose>
-                      <c:when test="${fn:contains(firstPath, '.mp4') || fn:contains(firstPath, '.webm') || fn:contains(firstPath, '.mov') || fn:contains(firstPath, '.avi') || fn:contains(firstPath, '.m4v') || fn:contains(firstPath, '.qt')}">
-                        <video id="post-main-preview"
-                               class="zt-post-main-image"
-                               src="${pageContext.request.contextPath}${post.images[0].uploadPath}"
-                               controls
-                               style="width: 100%; height: 350px; object-fit: contain; background: #000;"></video>
-                      </c:when>
-                      <%-- 이미지인 경우 --%>
-                      <c:otherwise>
-                        <img id="post-main-preview"
-                             class="zt-post-main-image"
-                             src="${pageContext.request.contextPath}${post.images[0].uploadPath}"
-                             alt="메인 파일 미리보기"
-                             style="width: 100%; height: 350px; object-fit: contain;">
-                      </c:otherwise>
-                    </c:choose>
-                  </c:when>
-                  <c:otherwise>
-                    <div id="post-image-empty" class="zt-post-image-empty text-center p-4">
-                      <i class="bi bi-folder-x display-5"></i>
-                      <strong>등록된 파일이 없습니다</strong>
-                    </div>
-                    <img id="post-main-preview"
-                         class="zt-post-main-image"
-                         src=""
-                         alt="선택한 파일 미리보기"
-                         hidden>
-                  </c:otherwise>
-                </c:choose>
-
-                <div id="dynamic-media-view" style="width: 100%; height: 100%; display: none; align-items: center; justify-content: center;"></div>
-
-                <button type="button" id="post-prev-btn" class="zt-slider-btn zt-prev-btn" style="display: none; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 10; width: 36px; height: 36px; border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white; border: none; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;">❮</button>
-                <button type="button" id="post-next-btn" class="zt-slider-btn zt-next-btn" style="display: none; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10; width: 36px; height: 36px; border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: white; border: none; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;">❯</button>
-              </div>
-
-              <div class="mt-3">
-                <p class="mb-2 text-muted small"><i class="bi bi-check2-square"></i> 삭제할 기존 파일을 선택하세요:</p>
+              <%-- 기존 업로드된 파일 및 삭제 체크박스 영역 --%>
+              <div class="mb-3">
+                <label class="form-label fw-bold">기존 첨부파일 (삭제할 항목을 체크하세요)</label>
                 <div class="d-flex flex-wrap gap-2">
-                  <c:forEach var="image" items="${post.images}" varStatus="status">
-                    <div class="position-relative border p-1 rounded text-center" style="width: 70px;">
-                      <c:set var="path" value="${fn:toLowerCase(image.uploadPath)}" />
-                      <c:choose>
-                        <c:when test="${fn:contains(path, '.mp4') || fn:contains(path, '.webm') || fn:contains(path, '.mov') || fn:contains(path, '.avi') || fn:contains(path, '.m4v') || fn:contains(path, '.qt')}">
-                          <div class="bg-dark text-white d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border-radius: 4px;">
-                            <i class="bi bi-film"></i>
+                  <c:choose>
+                    <c:when test="${not empty post.images}">
+                      <c:forEach var="image" items="${post.images}">
+                        <div class="border p-2 rounded text-center bg-light" style="width: 110px;">
+                          <span class="d-block text-truncate small mb-1" style="max-width: 100px;"><c:out value="${image.originName}"/></span>
+                          <div class="form-check d-flex justify-content-center align-items-center gap-1">
+                            <input class="form-check-input" type="checkbox" name="deleteImageIds" value="${image.imageId}" id="del-${image.imageId}">
+                            <label class="form-check-label small text-danger fw-bold" for="del-${image.imageId}">삭제</label>
                           </div>
-                        </c:when>
-                        <c:when test="${fn:contains(path, '.jpg') || fn:contains(path, '.jpeg') || fn:contains(path, '.png') || fn:contains(path, '.gif') || fn:contains(path, '.webp')}">
-                          <img src="${pageContext.request.contextPath}${image.uploadPath}" alt="썸네일" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
-                        </c:when>
-                        <c:otherwise>
-                          <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border-radius: 4px;">
-                            <i class="bi bi-file-earmark-fill"></i>
-                          </div>
-                        </c:otherwise>
-                      </c:choose>
-                      <div class="form-check d-flex justify-content-center mt-1">
-                        <input class="form-check-input" type="checkbox" name="deleteImageIds" value="${image.uploadId}" id="del-${image.uploadId}">
-                      </div>
-                    </div>
-                  </c:forEach>
+                        </div>
+                      </c:forEach>
+                    </c:when>
+                    <c:otherwise>
+                      <p class="text-muted small">등록된 기존 파일이 없습니다.</p>
+                    </c:otherwise>
+                  </c:choose>
                 </div>
               </div>
 
-              <div class="mt-4">
-                <label class="form-label" for="new-post-image">새 파일 추가</label>
+              <%-- 새 파일 추가 인풋 --%>
+              <div class="mb-3 mt-4">
+                <label class="form-label fw-bold" for="new-post-image">새 파일 추가</label>
                 <input id="new-post-image"
-                       name="imageFiles"
-                       class="form-control"
+                       name="files"
                        type="file"
-                       multiple>
-                <small class="zt-muted d-block mt-2">새 파일을 추가하면 아래에 미리보기가 반영됩니다.</small>
+                       accept="image/*,video/*,audio/*"
+                       multiple
+                       class="form-control">
+                <small class="text-muted">최대 10개까지 업로드 가능합니다.</small>
               </div>
 
             </div>
@@ -139,18 +98,18 @@
           <div class="col-lg-6">
             <div class="mb-3">
               <label class="form-label" for="post-title">제목</label>
-              <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="여행 제목" value="<c:out value='${post.title}'/>" required>
+              <input id="post-title" name="title" class="form-control" type="text" maxlength="60" placeholder="제목을 입력하세요" value="<c:out value='${post.title}'/>" required>
             </div>
             <div class="mb-3">
               <label class="form-label" for="post-place">장소</label>
-              <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 망원동" value="<c:out value='${post.place}'/>" required>
+              <input id="post-place" name="place" class="form-control" type="text" placeholder="예: 서울 성수" value="<c:out value='${post.place}'/>">
             </div>
             <div class="mb-3">
               <label class="form-label" for="post-content">내용</label>
               <textarea id="post-content"
                         name="content"
                         class="form-control"
-                        rows="8"
+                        rows="6"
                         placeholder="내용을 적어 주세요."
                         required><c:out value="${post.content}"/></textarea>
             </div>
@@ -188,15 +147,7 @@
                      required>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label" for="post-tags">태그</label>
-              <input id="post-tags" class="form-control" type="text" placeholder="#여행 #가성비여행">
-            </div>
-            <div class="form-check form-switch mb-4">
-              <input id="share-route" class="form-check-input" type="checkbox" checked>
-              <label class="form-check-label" for="share-route">동선 공개</label>
-            </div>
-            <button class="btn btn-primary zt-primary-btn w-100 py-2" type="submit">수정 완료</button>
+            <button class="btn btn-primary w-100 py-2 mt-3" type="submit">수정 완료</button>
           </div>
         </form>
       </section>
@@ -205,7 +156,8 @@
 
   </div>
 </div>
+
 <script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/post-edit.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
 </html>

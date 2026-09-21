@@ -44,17 +44,20 @@ public class PostService {
     }
 
     /**
-     * 대용량 파일 청크(조각) 저장 및 병합 로직
+     * 대용량 파일 청크(조각) 임시 저장 및 마지막 청크 도달 시 자동 병합 처리
+     * (PostApiController의 /upload-chunk에서 호출하는 메서드)
      */
     public String processChunkUpload(ChunkDto dto) throws IOException {
-        File tempDir = new File(postUploadDir + "/temp/" + dto.getFileUid());
+        File tempDir = new File(postUploadDir + "/temp/" + dto.getUploadId());
         if (!tempDir.exists()) {
             tempDir.mkdirs();
         }
 
+        // 1. 현재 청크 파일 임시 저장
         File chunkFile = new File(tempDir, "chunk_" + dto.getChunkIndex());
         dto.getFile().transferTo(chunkFile);
 
+        // 2. 모든 청크가 다 전송되었는지 확인
         boolean isAllUploaded = true;
         for (int i = 0; i < dto.getTotalChunks(); i++) {
             File f = new File(tempDir, "chunk_" + i);
@@ -64,6 +67,7 @@ public class PostService {
             }
         }
 
+        // 3. 모든 청크가 모였다면 최종 병합 수행 및 temp 폴더 자동 삭제
         if (isAllUploaded) {
             String originName = (dto.getOriginalName() != null) ? dto.getOriginalName() : "unknown";
             String savedFileName = UUID.randomUUID().toString() + "_" + originName;
@@ -75,31 +79,41 @@ public class PostService {
 
             File finalFile = new File(postUploadDir, savedFileName);
 
+            // 청크들을 순서대로 합치기
             try (FileOutputStream fos = new FileOutputStream(finalFile, true)) {
                 for (int i = 0; i < dto.getTotalChunks(); i++) {
                     File f = new File(tempDir, "chunk_" + i);
                     Files.copy(f.toPath(), fos);
-                    f.delete();
+                    f.delete(); // 개별 조각 파일 삭제
                 }
             }
 
+            // 임시 디렉토리 자체 삭제 (자동 클린업)
             if (tempDir.exists()) {
                 tempDir.delete();
             }
 
-            return savedFileName;
+            return savedFileName; // 병합 완료된 최종 파일명 반환
         }
 
-        return null;
+        return null; // 아직 모든 청크가 오지 않았음
     }
 
     /**
-     * 게시글 등록 (일반 업로드)
+     * 게시글 단건 조회 (이미지 리스트 포함)
      */
+    public PostDto findById(Long postId) {
+        PostDto post = postMapper.findById(postId);
+        if (post != null) {
+            List<PostImageDto> images = postMapper.findImagesByPostId(postId);
+            post.setImages(images);
+        }
+        return post;
+    }
+
     @Transactional
     public void save(PostDto postDto, List<MultipartFile> mediaFiles) throws IOException {
         postValidator.validateSave(mediaFiles);
-
         postMapper.save(postDto);
         Long postId = postDto.getPostId();
 
@@ -107,10 +121,7 @@ public class PostService {
             int fileOrder = 0;
             for (MultipartFile file : mediaFiles) {
                 if (file.isEmpty()) continue;
-
                 SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, WEB_PREFIX);
-
-                // 🌟 절대 경로 대신 파일 이름만 추출해서 저장 (400 에러 방지)
                 String fileName = new File(savedFile.getPath()).getName();
 
                 PostImageDto imageDto = PostImageDto.builder()
@@ -120,16 +131,11 @@ public class PostService {
                         .build();
 
                 postMapper.saveImage(imageDto);
-                Long uploadId = imageDto.getUploadId();
-
-                postMapper.savePostImage(postId, uploadId);
+                postMapper.savePostImage(postId, imageDto.getUploadId());
             }
         }
     }
 
-    /**
-     * 청크 업로드 완료된 파일 이름 리스트를 받아 게시글 등록
-     */
     @Transactional
     public void saveWithFiles(PostDto postDto, List<String> savedFileNames) {
         postMapper.save(postDto);
@@ -143,66 +149,19 @@ public class PostService {
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(originName)
-                        .uploadPath(savedFileName) // 🌟 순수 파일명만 저장
+                        .uploadPath(savedFileName)
                         .imageOrder(fileOrder++)
                         .build();
 
                 postMapper.saveImage(imageDto);
-                Long uploadId = imageDto.getUploadId();
-
-                postMapper.savePostImage(postId, uploadId);
+                postMapper.savePostImage(postId, imageDto.getUploadId());
             }
         }
     }
 
-    /**
-     * 게시글 수정
-     */
-    @Transactional
-    public void update(PostDto postDto, List<Long> deleteImageIds, List<MultipartFile> mediaFiles) throws IOException {
-        Long postId = postDto.getPostId();
-
-        List<PostImageDto> existingImages = postMapper.findImagesByPostId(postId);
-        postValidator.validateUpdate(existingImages, deleteImageIds, mediaFiles);
-
-        postMapper.update(postDto);
-
-        if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
-            for (Long uploadId : deleteImageIds) {
-                postMapper.deleteByPostIdAndUploadId(postId, uploadId);
-                postMapper.deleteImage(uploadId);
-            }
-        }
-
-        if (mediaFiles != null && !mediaFiles.isEmpty()) {
-            int imageOrder = existingImages.size();
-            for (MultipartFile file : mediaFiles) {
-                if (file.isEmpty()) continue;
-
-                SavedFile savedFile = fileUploadUtil.save(file, postUploadDir, WEB_PREFIX);
-                String fileName = new File(savedFile.getPath()).getName();
-
-                PostImageDto imageDto = PostImageDto.builder()
-                        .originName(savedFile.getOriginalName())
-                        .uploadPath(fileName) // 🌟 순수 파일명만 저장
-                        .imageOrder(imageOrder++)
-                        .build();
-
-                postMapper.saveImage(imageDto);
-                Long uploadId = imageDto.getUploadId();
-
-                postMapper.savePostImage(postId, uploadId);
-            }
-        }
-    }
-
-    /**
-     * 청크 업로드를 통한 수정
-     */
     @Transactional
     public void updateWithFiles(PostDto postDto, List<Long> deleteImageIds, List<String> savedFileNames) {
         Long postId = postDto.getPostId();
-
         postMapper.update(postDto);
 
         if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
@@ -222,52 +181,44 @@ public class PostService {
 
                 PostImageDto imageDto = PostImageDto.builder()
                         .originName(originName)
-                        .uploadPath(savedFileName) // 🌟 순수 파일명만 저장
+                        .uploadPath(savedFileName)
                         .imageOrder(imageOrder++)
                         .build();
 
                 postMapper.saveImage(imageDto);
-                Long uploadId = imageDto.getUploadId();
-
-                postMapper.savePostImage(postId, uploadId);
+                postMapper.savePostImage(postId, imageDto.getUploadId());
             }
         }
     }
 
     public PageResponse getPostPage(PageRequest pageRequest, String sort, String keyword) {
-        if (pageRequest.getPage() < 1) {
-            pageRequest.setPage(1);
-        }
-
+        if (pageRequest.getPage() < 1) pageRequest.setPage(1);
         int totalCount = postMapper.countAll(keyword);
         List<PostDto> list = postMapper.findPage(sort, keyword, pageRequest.getOffset(), pageRequest.getSize());
 
         for (PostDto post : list) {
-            List<PostImageDto> images = postMapper.findImagesByPostId(post.getPostId());
-            post.setImages(images);
+            post.setImages(postMapper.findImagesByPostId(post.getPostId()));
         }
-
         return new PageResponse(list, totalCount, pageRequest);
     }
 
     public List<PostDto> findPage(String sort, String keyword, int offset, int size) {
         List<PostDto> list = postMapper.findPage(sort, keyword, offset, size);
         for (PostDto post : list) {
-            List<PostImageDto> images = postMapper.findImagesByPostId(post.getPostId());
-            post.setImages(images);
+            post.setImages(postMapper.findImagesByPostId(post.getPostId()));
         }
         return list;
     }
 
-    public PostDto findById(Long postId) {
-        PostDto post = postMapper.findById(postId);
-        if (post != null) {
-            List<PostImageDto> images = postMapper.findImagesByPostId(postId);
-            post.setImages(images);
+    public List<PostDto> findAll(String sort, String keyword) {
+        List<PostDto> list = postMapper.findAll(sort);
+        for (PostDto post : list) {
+            post.setImages(postMapper.findImagesByPostId(post.getPostId()));
         }
-        return post;
+        return list;
     }
 
+    // 🌟 에러 해결을 위해 delete 및 deleteById 메서드 모두 제공
     public void delete(Long postId) {
         deleteById(postId);
     }
@@ -275,15 +226,6 @@ public class PostService {
     @Transactional
     public void deleteById(Long postId) {
         postMapper.deleteById(postId);
-    }
-
-    public List<PostDto> findAll(String sort, String keyword) {
-        List<PostDto> list = postMapper.findAll(sort);
-        for (PostDto post : list) {
-            List<PostImageDto> images = postMapper.findImagesByPostId(post.getPostId());
-            post.setImages(images);
-        }
-        return list;
     }
 
     public int countAll(String keyword) {

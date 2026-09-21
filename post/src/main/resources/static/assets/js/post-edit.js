@@ -1,221 +1,264 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const maxFileCount = 10; // 최대 파일 제한 개수
+    // ==========================================
+    // [글 작성/수정 페이지 전용 로직]
+    // ==========================================
+    const maxFileCount = 10;
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB 단위 청크 분할
 
+    const uploader = document.querySelector("[data-post-image-uploader]");
     const imageInput = document.querySelector("#new-post-image");
-    const editForm = document.querySelector("form"); // 수정 페이지 폼 태그
+    const emptyMessage = document.querySelector("#post-image-empty");
+    const mainPreview = document.querySelector("#post-main-preview");
+    const thumbnailList = document.querySelector("#post-thumbnail-list");
+    const imageCount = document.querySelector("#post-image-count");
 
-    if (!imageInput || !editForm) return;
+    const prevBtn = document.querySelector("#post-prev-btn");
+    const nextBtn = document.querySelector("#post-next-btn");
+    const form = document.querySelector("form");
 
-    let newSelectedFiles = []; // 새로 추가한 파일 배열
+    // 작성/수정 페이지 요소들이 없으면 실행 중단
+    if (!uploader || !imageInput || !emptyMessage || !mainPreview || !thumbnailList || !imageCount) {
+        return;
+    }
 
-    // 1. 파일 선택 및 보안 필터링 / 개수 검증 이벤트
-    imageInput.addEventListener("change", () => {
-        const rawNewFiles = Array.from(imageInput.files);
-        imageInput.value = ""; // 입력 초기화 (같은 파일 재선택 허용)
+    let selectedFiles = [];
+    let currentImageIndex = 0;
+    let currentPreviewUrl = null;
 
-        // 🚫 보안상 차단할 확장자 검사 (.exe, .zip 등)
-        const blockedExtensions = [".exe", ".zip", ".bat", ".cmd", ".sh", ".jar", ".msi", ".iso", ".dmg"];
-        const validFiles = [];
-        let hasBlockedFile = false;
+    const container = mainPreview.parentElement;
+    let mediaElement = container.querySelector("#dynamic-media-view");
 
-        rawNewFiles.forEach(file => {
-            const fileNameLower = file.name.toLowerCase();
-            const isBlocked = blockedExtensions.some(ext => fileNameLower.endsWith(ext));
-            if (isBlocked) {
-                hasBlockedFile = true;
-            } else {
-                validFiles.push(file);
+    if (!mediaElement) {
+        mediaElement = document.createElement("div");
+        mediaElement.id = "dynamic-media-view";
+        mediaElement.style.cssText = "width: 100%; height: 100%; display: none; align-items: center; justify-content: center;";
+        container.insertBefore(mediaElement, mainPreview);
+    } else {
+        mediaElement.style.position = "static";
+        mediaElement.style.width = "100%";
+        mediaElement.style.height = "100%";
+    }
+
+    function renderMainPreview(index) {
+        if (selectedFiles.length === 0) {
+            if (currentPreviewUrl) {
+                URL.revokeObjectURL(currentPreviewUrl);
+                currentPreviewUrl = null;
             }
-        });
-
-        if (hasBlockedFile) {
-            alert("보안상 `.exe`, `.zip` 등의 실행 파일 및 압축 파일은 업로드할 수 없습니다.");
+            emptyMessage.style.display = "flex";
+            mainPreview.hidden = true;
+            mediaElement.style.display = "none";
+            mediaElement.innerHTML = "";
+            if (prevBtn) prevBtn.style.display = "none";
+            if (nextBtn) nextBtn.style.display = "none";
+            imageCount.textContent = "0";
+            return;
         }
 
+        if (index >= selectedFiles.length) index = selectedFiles.length - 1;
+        if (index < 0) index = 0;
+        currentImageIndex = index;
+
+        const file = selectedFiles[index];
+        if (currentPreviewUrl) {
+            URL.revokeObjectURL(currentPreviewUrl);
+        }
+
+        currentPreviewUrl = URL.createObjectURL(file);
+        emptyMessage.style.display = "none";
+        mediaElement.style.display = "flex";
+        mainPreview.hidden = true;
+
+        const fileNameLower = file.name.toLowerCase();
+        const isVideo = file.type.startsWith("video/") || fileNameLower.endsWith(".webm") || fileNameLower.endsWith(".mp4") || fileNameLower.endsWith(".mov");
+        const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif");
+
+        if (isImage) {
+            mediaElement.innerHTML = `<img src="${currentPreviewUrl}" alt="${file.name}" style="max-width: 100%; max-height: 250px; width: auto; height: auto; object-fit: contain; border-radius: 8px;">`;
+        } else if (isVideo) {
+            mediaElement.innerHTML = `
+                <div class="text-center p-4">
+                    <i class="bi bi-file-earmark-play-fill display-4 mb-2 text-danger"></i>
+                    <p class="mb-1">${file.name}</p>
+                    <small class="text-muted">동영상 파일이 선택되었습니다. (등록 시 재생됩니다)</small>
+                </div>
+            `;
+        }
+
+        imageCount.textContent = `${currentImageIndex + 1} / ${selectedFiles.length}`;
+
+        if (prevBtn && nextBtn) {
+            const hasMultiple = selectedFiles.length > 1;
+            prevBtn.style.display = hasMultiple ? "block" : "none";
+            nextBtn.style.display = hasMultiple ? "block" : "none";
+        }
+    }
+
+    function renderThumbnails() {
+        thumbnailList.innerHTML = "";
+        selectedFiles.forEach((file, index) => {
+            const item = document.createElement("div");
+            item.className = "zt-post-thumbnail-item me-2 d-inline-block position-relative";
+
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "zt-post-thumbnail btn p-0 border-0";
+            if (index === currentImageIndex) button.classList.add("active");
+
+            const thumbContent = document.createElement("div");
+            thumbContent.style.cssText = "width: 60px; height: 60px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f1f3f5; position: relative;";
+
+            const thumbnailUrl = URL.createObjectURL(file);
+            const fileNameLower = file.name.toLowerCase();
+            const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif");
+            const isVideo = file.type.startsWith("video/") || fileNameLower.endsWith(".webm") || fileNameLower.endsWith(".mp4") || fileNameLower.endsWith(".mov");
+
+            if (isImage) {
+                thumbContent.innerHTML = `<img src="${thumbnailUrl}" alt="${file.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else if (isVideo) {
+                thumbContent.innerHTML = `
+                    <i class="bi bi-file-earmark-play-fill text-dark" style="font-size: 1.5rem;"></i>
+                    <span class="position-absolute bottom-0 end-0 badge bg-dark text-white" style="font-size: 8px; padding: 1px 3px;">VIDEO</span>
+                `;
+                URL.revokeObjectURL(thumbnailUrl);
+            } else {
+                thumbContent.innerHTML = `<i class="bi bi-file-earmark-fill text-dark" style="font-size: 1.5rem;"></i>`;
+                URL.revokeObjectURL(thumbnailUrl);
+            }
+
+            button.appendChild(thumbContent);
+            button.addEventListener("click", () => {
+                renderMainPreview(index);
+                renderThumbnails();
+            });
+
+            const removeButton = document.createElement("button");
+            removeButton.type = "button";
+            removeButton.className = "zt-post-thumbnail-remove btn btn-danger btn-sm position-absolute top-0 end-0 p-0 px-1";
+            removeButton.style.fontSize = "10px";
+            removeButton.textContent = "×";
+
+            removeButton.addEventListener("click", (e) => {
+                e.stopPropagation();
+                selectedFiles.splice(index, 1);
+                currentImageIndex = Math.max(0, Math.min(currentImageIndex, selectedFiles.length - 1));
+                renderMainPreview(currentImageIndex);
+                renderThumbnails();
+            });
+
+            item.append(button, removeButton);
+            thumbnailList.append(item);
+        });
+    }
+
+    if (prevBtn) {
+        prevBtn.onclick = (e) => {
+            e.preventDefault();
+            if (selectedFiles.length <= 1) return;
+            currentImageIndex = (currentImageIndex - 1 + selectedFiles.length) % selectedFiles.length;
+            renderMainPreview(currentImageIndex);
+            renderThumbnails();
+        };
+    }
+
+    if (nextBtn) {
+        nextBtn.onclick = (e) => {
+            e.preventDefault();
+            if (selectedFiles.length <= 1) return;
+            currentImageIndex = (currentImageIndex + 1) % selectedFiles.length;
+            renderMainPreview(currentImageIndex);
+            renderThumbnails();
+        };
+    }
+
+    imageInput.addEventListener("change", () => {
+        const newFiles = Array.from(imageInput.files);
+        imageInput.value = "";
+
+        const blockedExtensions = [".exe", ".zip", ".bat", ".cmd", ".sh", ".jar", ".msi", ".iso", ".dmg"];
+        const validFiles = newFiles.filter(file => !blockedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)));
+
+        if (validFiles.length < newFiles.length) alert("보안상 실행 및 압축 파일은 업로드할 수 없습니다.");
         if (validFiles.length === 0) return;
 
-        // 기존 DB에 등록된 파일 개수와 삭제 체크된 개수 확인
         const existingThumbnails = document.querySelectorAll('input[name="deleteImageIds"]');
         let deletedCount = 0;
         existingThumbnails.forEach(checkbox => {
             if (checkbox.checked) deletedCount++;
         });
 
-        // 남아있는 기존 파일 수 + 현재 새로 추가된 파일 수 합산
         const currentRemainingExisting = existingThumbnails.length - deletedCount;
-        const totalCurrentCount = currentRemainingExisting + newSelectedFiles.length;
-        const remainingAllowed = maxFileCount - totalCurrentCount;
+        const totalCurrentCount = currentRemainingExisting + selectedFiles.length;
+        const remainingCount = maxFileCount - totalCurrentCount;
 
-        if (validFiles.length > remainingAllowed) {
-            alert(`기존 파일과 새 파일을 합쳐 최대 ${maxFileCount}개까지만 등록할 수 있습니다.`);
+        if (validFiles.length > remainingCount) {
+            alert(`파일은 최대 ${maxFileCount}개까지만 선택할 수 있습니다.`);
         }
 
-        const filesToAdd = validFiles.slice(0, remainingAllowed);
-
+        const filesToAdd = validFiles.slice(0, remainingCount);
         if (filesToAdd.length > 0) {
-            newSelectedFiles = [...newSelectedFiles, ...filesToAdd];
-            updateNewFilesInput();
-            renderNewFilesPreview();
+            selectedFiles = [...selectedFiles, ...filesToAdd];
+            console.log("📂 [디버깅] 현재 누적 선택된 파일들:", selectedFiles);
+            renderMainPreview(currentImageIndex);
+            renderThumbnails();
         }
     });
 
-    // 폼 인풋에 동적으로 파일 재할당
-    function updateNewFilesInput() {
-        const dataTransfer = new DataTransfer();
-        newSelectedFiles.forEach(file => {
-            dataTransfer.items.add(file);
-        });
-        imageInput.files = dataTransfer.files;
-    }
+    if (form) {
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-    // 새로 추가된 파일들의 미리보기 화면 렌더링
-    function renderNewFilesPreview() {
-        let newPreviewContainer = document.querySelector("#dynamic-new-files-preview");
-        if (!newPreviewContainer) {
-            newPreviewContainer = document.createElement("div");
-            newPreviewContainer.id = "dynamic-new-files-preview";
-            newPreviewContainer.className = "mt-3";
-            // 삭제 체크박스 영역 하단에 삽입
-            const thumbnailSection = document.querySelector('input[name="deleteImageIds"]')?.closest('.mt-3')?.parentElement || imageInput.parentElement;
-            thumbnailSection.appendChild(newPreviewContainer);
-        }
+            const postIdInput = form.querySelector('input[name="postId"]');
+            const postId = postIdInput ? postIdInput.value : null;
 
-        if (newSelectedFiles.length === 0) {
-            newPreviewContainer.innerHTML = "";
-            return;
-        }
+            const submitBtn = form.querySelector("button[type='submit']");
+            if (submitBtn) submitBtn.disabled = true;
 
-        let html = `<p class="mb-2 text-muted small"><i class="bi bi-plus-circle"></i> 새로 추가된 파일 목록:</p>`;
-        html += `<div class="d-flex flex-wrap gap-2">`;
+            try {
+                let savedFileNames = [];
 
-        newSelectedFiles.forEach((file, index) => {
-            const fileUrl = URL.createObjectURL(file);
-            const fileNameLower = file.name.toLowerCase();
-            const isImage = file.type.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp)$/.test(fileNameLower);
+                console.log("🚀 [디버깅] 청크 업로드 루프 진입. 대상 파일 수:", selectedFiles.length);
 
-            html += `<div class="position-relative border p-1 rounded text-center" style="width: 70px; background: #fff;">`;
-            if (isImage) {
-                html += `<img src="${fileUrl}" alt="${file.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">`;
-            } else {
-                html += `<div class="bg-dark text-white d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border-radius: 4px;"><i class="bi bi-file-earmark-play-fill"></i></div>`;
-            }
-            html += `<button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 px-1 remove-new-file" data-index="${index}" style="font-size: 10px;">×</button>`;
-            html += `</div>`;
-        });
+                // 기존 코드:
+// const fileUid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'file-' + Date.now();
+// ...
+// formData.append("fileUid", fileUid);
 
-        html += `</div>`;
-        newPreviewContainer.innerHTML = html;
+// 🌟 수정된 올바른 코드 (uploadId로 변경):
+                for (const file of selectedFiles) {
+                    if (typeof file === "string") continue;
 
-        // 새로 추가된 파일 개별 삭제 버튼 이벤트
-        newPreviewContainer.querySelectorAll(".remove-new-file").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const idx = parseInt(e.target.getAttribute("data-index"));
-                newSelectedFiles.splice(idx, 1);
-                updateNewFilesInput();
-                renderNewFilesPreview();
-            });
-        });
-    }
+                    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                    // 업로드 세션을 식별하는 고유 ID 이름을 백엔드 DTO(ChunkDto)의 필드명인 uploadId와 일치시킴
+                    const uploadId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'upload-' + Date.now();
+                    let fileSavedName = null;
 
-    // 기존 파일 삭제 체크박스 변경 시 개수 제한 실시간 반영을 위한 이벤트 연동
-    document.querySelectorAll('input[name="deleteImageIds"]').forEach(checkbox => {
-        checkbox.addEventListener("change", () => {
-            // 필요 시 삭제 개수에 따른 추가 검증 로직 수행 가능
-        });
-    });
+                    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                        const start = chunkIndex * CHUNK_SIZE;
+                        const end = Math.min(start + CHUNK_SIZE, file.size);
+                        const chunk = file.slice(start, end);
 
-    // ==========================================
-    // [수정된 최종 폼 제출부]
-    // ==========================================
-    editForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+                        const formData = new FormData();
+                        formData.append("file", chunk);
+                        formData.append("uploadId", uploadId); // 👈 'fileUid'에서 'uploadId'로 수정 완료!
+                        formData.append("originalName", file.name);
+                        formData.append("chunkIndex", chunkIndex);
+                        formData.append("totalChunks", totalChunks);
 
-        const submitBtn = editForm.querySelector("button[type='submit']");
-        if (submitBtn) submitBtn.disabled = true;
+                        const chunkRes = await fetch('/api/posts/upload-chunk', {method: 'POST', body: formData});
+                        const chunkResult = await chunkRes.json();
 
-        try {
-            let savedFileNames = [];
+                        if (!chunkResult.success) {
+                            throw new Error(chunkResult.message || "청크 업로드 실패");
+                        }
 
-            // 1. 새로 추가된 파일 청크 업로드
-            for (const file of newSelectedFiles) {
-                const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-                const fileUid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'file-' + Date.now();
-                let fileSavedName = null;
-
-                for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-                    const start = chunkIndex * CHUNK_SIZE;
-                    const end = Math.min(start + CHUNK_SIZE, file.size);
-                    const chunk = file.slice(start, end);
-
-                    const chunkFormData = new FormData();
-                    chunkFormData.append("file", chunk);
-                    chunkFormData.append("fileUid", fileUid);
-                    chunkFormData.append("originalName", file.name);
-                    chunkFormData.append("chunkIndex", chunkIndex);
-                    chunkFormData.append("totalChunks", totalChunks);
-
-                    const response = await fetch('/api/posts/upload-chunk', {
-                        method: 'POST',
-                        body: chunkFormData
-                    });
-
-                    const result = await response.json();
-                    if (!result.success) {
-                        throw new Error(result.message || "청크 업로드 실패");
+                        if (chunkResult.data && chunkResult.data.completed === true && chunkResult.data.savedFileName) {
+                            fileSavedName = chunkResult.data.savedFileName;
+                        }
                     }
 
-                    if (result.data && result.data.completed) {
-                        fileSavedName = result.data.savedFileName;
+                    if (fileSavedName) {
+                        savedFileNames.push(fileSavedName);
                     }
-                }
-
-                if (fileSavedName) {
-                    savedFileNames.push(fileSavedName);
-                }
+                });
             }
-
-            // 2. 최종 Payload 구성 (FormData)
-            const finalPayload = new FormData();
-            const postId = editForm.querySelector('input[name="postId"]').value;
-
-            finalPayload.append("title", editForm.querySelector('#post-title')?.value || "");
-            finalPayload.append("place", editForm.querySelector('#post-place')?.value || "");
-            finalPayload.append("content", editForm.querySelector('#post-content')?.value || "");
-            finalPayload.append("transportCost", editForm.querySelector('#transport-cost')?.value || 0);
-            finalPayload.append("foodCost", editForm.querySelector('#food-cost')?.value || 0);
-            finalPayload.append("otherCost", editForm.querySelector('#other-cost')?.value || 0);
-
-            // 체크된 삭제 이미지 ID들 추가
-            editForm.querySelectorAll('input[name="deleteImageIds"]:checked').forEach(checkbox => {
-                finalPayload.append("deleteImageIds", checkbox.value);
-            });
-
-            // 업로드된 새 파일 이름들 추가
-            savedFileNames.forEach(name => {
-                finalPayload.append("savedFileNames", name);
-            });
-
-            // 3. 백엔드 컨트롤러와 주소/메서드 방식 일치시키기 (PUT -> POST, 경로 수정)
-            const updateResponse = await fetch(`/api/posts/${postId}/update`, {
-                method: 'POST', // 💡 컨트롤러의 @PostMapping("/{postId}/update")와 일치시킴
-                body: finalPayload
-            });
-
-            const updateResult = await updateResponse.json();
-
-            if (updateResponse.ok && updateResult.success) {
-                alert("게시글이 성공적으로 수정되었습니다!");
-                location.href = `/main-post`;
-            } else {
-                alert("수정 실패: " + (updateResult.message || ""));
-                if (submitBtn) submitBtn.disabled = false;
-            }
-
-        } catch (error) {
-            console.error("오류 발생:", error);
-            alert("오류가 발생했습니다: " + error.message);
-            if (submitBtn) submitBtn.disabled = false;
-        }
-    });
-})

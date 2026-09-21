@@ -1,16 +1,15 @@
 package com.post.post.controller;
+
 import com.post.common.response.PageRequest;
 import com.post.common.response.PageResponse;
 import com.post.post.dto.PostDto;
 import com.post.post.service.PostService;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
-
 
 @Controller
 public class PostController {
@@ -35,30 +34,26 @@ public class PostController {
 
         PageResponse pageResponse = postService.getPostPage(pageRequest, sort, keyword);
 
-        model.addAttribute("posts", pageResponse.getList()); // 실제 게시글 리스트
-        model.addAttribute("paging", pageResponse);          // pagination.jsp용 객체
+        model.addAttribute("posts", pageResponse.getList());
+        model.addAttribute("paging", pageResponse);
         model.addAttribute("sort", sort);
         model.addAttribute("keyword", keyword);
 
         return "post/main-post";
     }
 
+    // 상세 페이지 조회
     @GetMapping("/detail")
     public String detail(@RequestParam(value = "postId", required = false) Long postId, Model model) {
         if (postId == null) {
             return "redirect:/main-post";
         }
         PostDto post = postService.findById(postId);
-
-        // 만약 postService.findById() 안에서 post.setImages(...) 처리가 안 되어 있다면 여기서 직접 세팅
-        // post.setImages(fileService.findByPostId(postId));
-
         model.addAttribute("post", post);
         return "post/post-detail";
     }
 
-
-    // 수정 페이지 이동 (GET)
+    // 🌟 1. 수정 페이지 이동 (GET) - 누락 방지를 위해 필수!
     @GetMapping("/edit-post")
     public String editPostForm(@RequestParam("postId") Long postId, Model model) {
         if (postId == null) {
@@ -67,29 +62,42 @@ public class PostController {
         PostDto post = postService.findById(postId);
 
         model.addAttribute("post", post);
-        model.addAttribute("postFiles", post.getSavedFileNames()); // 👈 수정 페이지에도 기존 파일 목록 전달
+        model.addAttribute("postFiles", post.getSavedFileNames()); // 기존 파일 목록 전달
 
         return "post/edit-post";
     }
+
+    // 🌟 2. 수정 내용 제출 처리 (POST)
+    @PostMapping("/edit-post")
+    public String updatePostProcess(
+            @RequestParam("postId") Long postId,
+            @RequestParam("title") String title,
+            @RequestParam(value = "place", required = false) String place,
+            @RequestParam("content") String content,
+            @RequestParam(value = "transportCost", defaultValue = "0") Long transportCost,
+            @RequestParam(value = "foodCost", defaultValue = "0") Long foodCost,
+            @RequestParam(value = "otherCost", defaultValue = "0") Long otherCost
+    ) {
+        PostDto postDto = new PostDto();
+        postDto.setPostId(postId);
+        postDto.setTitle(title);
+        postDto.setPlace(place);
+        postDto.setContent(content);
+        postDto.setTransportCost(transportCost);
+        postDto.setFoodCost(foodCost);
+        postDto.setOtherCost(otherCost);
+
+        // 서비스 호출하여 데이터베이스 업데이트
+        postService.updateWithFiles(postDto, null, null);
+
+        return "redirect:/detail?postId=" + postId;
+    }
+
     // 새 게시물 작성 페이지 이동 (GET)
     @GetMapping({"/post/new", "/new-post"})
     public String createPostForm(Model model) {
-        // JSP에서 ${post.title} 등을 쓸 때 NullPointerException이 나지 않도록 빈 객체 전달
         model.addAttribute("post", new PostDto());
-        return "post/new-post"; // /WEB-INF/views/post/new-post.jsp 경로 반환
-    }
-
-    @PostMapping({"/post/new", "/new-post"})
-    public String createPost(
-            @ModelAttribute PostDto postDto,
-            @RequestParam(value = "files", required = false) List<MultipartFile> mediaFiles
-    ) {
-        try {
-            postService.save(postDto, mediaFiles);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return "redirect:/main-post";
+        return "post/new-post";
     }
 
     // 삭제 처리
@@ -98,6 +106,24 @@ public class PostController {
         if (postId != null) {
             postService.delete(postId);
         }
+        return "redirect:/main-post";
+    }
+
+    @PostMapping("/new-post")
+    public String createPostProcess(
+            @RequestParam("title") String title,
+            // ... 중간 생략 ...
+            @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
+    ) {
+        // 🌟 이 로그가 찍히는지, 리스트에 파일명이 들어있는지 확인!
+        System.out.println("=== [DEBUG] 컨트롤러가 받은 savedFileNames: " + savedFileNames);
+
+        PostDto postDto = new PostDto();
+        postDto.setTitle(title);
+        // ... 세팅 ...
+
+        postService.saveWithFiles(postDto, savedFileNames);
+
         return "redirect:/main-post";
     }
 }

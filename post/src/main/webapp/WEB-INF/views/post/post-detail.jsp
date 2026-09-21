@@ -33,29 +33,28 @@
     </jsp:include>
 
     <main class="content">
-      <article class="panel overflow-hidden">
+      <article class="panel overflow-hidden p-4">
 
-        <div class="detail-title-area">
-          <span class="detail-category">이야기</span>
+        <div class="detail-title-area mb-3">
+          <span class="detail-category badge bg-primary mb-2">이야기</span>
           <h1 class="detail-title">
             <c:out value="${post.title}"/>
           </h1>
         </div>
 
-        <div class="user-meta">
+        <div class="user-meta d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
           <div class="detail-author-main">
             <strong>
               <c:out value="${empty post.writer ? '익명' : post.writer}"/>
             </strong>
           </div>
-          <div class="detail-author-sub">
-            <span><c:out value="${post.formattedCreateAt}"/></span>
+          <div class="detail-author-sub text-muted small">
+            <span class="me-3"><c:out value="${post.formattedCreateAt}"/></span>
             <span>조회수 <c:out value="${post.viewCount}" default="0"/></span>
           </div>
         </div>
 
-        <%-- 수정 및 삭제 버튼 영역 --%>
-        <div class="detail-owner-actions">
+        <div class="detail-owner-actions mb-4">
           <a class="btn btn-outline-secondary btn-sm" href="${pageContext.request.contextPath}/edit-post?postId=${post.postId}">수정</a>
           <form action="${pageContext.request.contextPath}/delete-post" method="post" onsubmit="return confirm('정말 삭제하시겠습니까?');" style="display:inline;">
             <input type="hidden" name="postId" value="${post.postId}">
@@ -65,7 +64,7 @@
 
         <c:choose>
           <c:when test="${not empty post.images}">
-            <div class="zt-detail-carousel" style="position: relative !important; width: 100%; height: 400px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 1rem;">
+            <div class="zt-detail-carousel" style="position: relative !important; width: 100%; height: 400px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 1.5rem;">
 
               <div id="image-slider-container" style="position: relative; width: 100%; height: 100%;">
                 <c:forEach var="image" items="${post.images}" varStatus="status">
@@ -73,7 +72,8 @@
                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: ${status.first ? 'flex' : 'none'}; align-items: center; justify-content: center; background: #000;"
                        data-index="${status.index}">
 
-                    <c:set var="resolvedPath" value="${pageContext.request.contextPath}/uploads/post/${image.uploadPath}" />
+                      <%-- 🌟 수정 포인트: /uploads/post/ -> /uploads/ 로 경로 일치화 --%>
+                    <c:set var="resolvedPath" value="${pageContext.request.contextPath}/uploads/${image.uploadPath}" />
                     <c:set var="lowerPath" value="${fn:toLowerCase(image.uploadPath)}" />
 
                     <c:set var="isImage" value="${fn:contains(lowerPath, '.jpg') || fn:contains(lowerPath, '.jpeg') || fn:contains(lowerPath, '.png') || fn:contains(lowerPath, '.gif') || fn:contains(lowerPath, '.webp')}" />
@@ -91,9 +91,9 @@
 
                       <c:when test="${isAudio}">
                         <div class="text-center text-white">
-                            <i class="bi bi-file-earmark-music display-1 mb-3"></i>
-                            <p><c:out value="${image.originName}"/></p>
-                            <audio src="${resolvedPath}" controls class="w-75"></audio>
+                          <i class="bi bi-file-earmark-music display-1 mb-3"></i>
+                          <p><c:out value="${image.originName}"/></p>
+                          <audio src="${resolvedPath}" controls class="w-75"></audio>
                         </div>
                       </c:when>
 
@@ -131,11 +131,30 @@
             </div>
           </c:when>
           <c:otherwise>
-            <div class="text-center text-white p-5 bg-dark rounded">
+            <div class="text-center text-muted p-4 bg-light rounded mb-4">
               <p class="mb-0">등록된 파일이 없습니다.</p>
             </div>
           </c:otherwise>
         </c:choose>
+
+        <c:if test="${not empty post.place}">
+          <div class="mb-3 text-muted">
+            <i class="bi bi-geo-alt-fill text-danger"></i> <strong>장소:</strong> <c:out value="${post.place}"/>
+          </div>
+        </c:if>
+
+        <div class="detail-content mb-4" style="white-space: pre-wrap; line-height: 1.6;">
+          <c:out value="${post.content}"/>
+        </div>
+
+        <div class="card bg-light border-0 p-3 mb-3">
+          <h6 class="fw-bold mb-2"><i class="bi bi-receipt"></i> 지출 비용 정보</h6>
+          <div class="row text-secondary small">
+            <div class="col-4">교통비: <span class="fw-bold text-dark"><fmt:formatNumber value="${empty post.transportCost ? 0 : post.transportCost}" pattern="#,###"/>원</span></div>
+            <div class="col-4">식비: <span class="fw-bold text-dark"><fmt:formatNumber value="${empty post.foodCost ? 0 : post.foodCost}" pattern="#,###"/>원</span></div>
+            <div class="col-4">기타 비용: <span class="fw-bold text-dark"><fmt:formatNumber value="${empty post.otherCost ? 0 : post.otherCost}" pattern="#,###"/>원</span></div>
+          </div>
+        </div>
 
       </article>
     </main>
@@ -144,6 +163,7 @@
 </div>
 
 <script src="${pageContext.request.contextPath}/assets/js/post-detail.js"></script>
+<script src="${pageContext.request.contextPath}/assets/js/post-preview.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
 </html>

@@ -5,6 +5,18 @@
 
 <mapper namespace="com.post.post.mapper.PostMapper">
 
+    <!-- 1. 목록 조회용 resultMap (이미지 컬렉션 제외) -->
+    <resultMap id="postListResultMap" type="PostDto">
+        <id property="postId" column="POST_ID"/>
+        <result property="writer" column="WRITER"/>
+        <result property="title" column="TITLE"/>
+        <result property="content" column="CONTENT"/>
+        <result property="createAt" column="CREATE_AT"/>
+        <result property="formattedCreateAt" column="FORMATTED_CREATE_AT"/>
+        <result property="thumbnailPath" column="THUMBNAIL_PATH"/>
+    </resultMap>
+
+    <!-- 2. 상세 조회용 resultMap (이미지 컬렉션 포함) -->
     <resultMap id="postResultMap" type="PostDto">
         <id property="postId" column="POST_ID"/>
         <result property="writer" column="WRITER"/>
@@ -16,30 +28,42 @@
         <result property="transportCost" column="TRANSPORT_COST"/>
         <result property="foodCost" column="FOOD_COST"/>
         <result property="otherCost" column="OTHER_COST"/>
-        <result property="thumbnailPath" column="THUMBNAIL_PATH"/>
 
-        <!-- 상세 페이지에서 쓸 이미지 리스트 매핑 추가 -->
-        <collection property="images" column="POST_ID" javaType="java.util.List" ofType="PostImageDto" select="findImagesByPostId"/>
+        <!-- JOIN 결과를 매핑할 이미지 리스트 -->
+        <collection property="images" ofType="PostImageDto">
+            <id property="uploadId" column="UPLOAD_ID"/>
+            <result property="originName" column="ORIGIN_NAME"/>
+            <result property="uploadPath" column="UPLOAD_PATH"/>
+            <result property="imageOrder" column="IMAGE_ORDER"/>
+        </collection>
     </resultMap>
-    <!-- 상세 조회 -->
+
+    <!-- 상세 조회 (postResultMap 사용) -->
     <select id="findById" parameterType="long" resultMap="postResultMap">
         SELECT
-        POST_ID,
-        WRITER,
-        TITLE,
-        CONTENT,
-        VIEW_COUNT,
-        CREATE_AT,
-        DATE_FORMAT(CREATE_AT, '%Y.%m.%d %H:%i') AS FORMATTED_CREATE_AT,
-        PLACE,
-        TRANSPORT_COST,
-        FOOD_COST,
-        OTHER_COST
-        FROM POST
-        WHERE POST_ID = #{postId}
-        AND IS_BLOCK = FALSE
+        P.POST_ID,
+        P.WRITER,
+        P.TITLE,
+        P.CONTENT,
+        P.VIEW_COUNT,
+        P.CREATE_AT,
+        DATE_FORMAT(P.CREATE_AT, '%Y.%m.%d %H:%i') AS FORMATTED_CREATE_AT,
+        P.PLACE,
+        P.TRANSPORT_COST,
+        P.FOOD_COST,
+        P.OTHER_COST,
+        -- 🌟 컬럼에 명확한 별칭(Alias) 부여
+        IU.UPLOAD_ID AS UPLOAD_ID,
+        IU.ORIGIN_NAME AS ORIGIN_NAME,
+        IU.UPLOAD_PATH AS UPLOAD_PATH,
+        IU.IMAGE_ORDER AS IMAGE_ORDER
+        FROM POST P
+        LEFT JOIN POST_UPLOAD PU ON P.POST_ID = PU.POST_ID
+        LEFT JOIN IMAGE_UPLOAD IU ON PU.UPLOAD_ID = IU.UPLOAD_ID
+        WHERE P.POST_ID = #{postId}
+        AND P.IS_BLOCK = FALSE
+        ORDER BY IU.IMAGE_ORDER ASC
     </select>
-
     <!-- 게시글 저장 -->
     <insert id="save"
             parameterType="PostDto"
@@ -71,8 +95,8 @@
         )
     </insert>
 
-    <!-- 페이지 목록 조회 (정렬 조건 동적 처리 적용) -->
-    <select id="findPage" resultMap="postResultMap">
+    <!-- 페이지 목록 조회 (postListResultMap 사용) -->
+    <select id="findPage" resultMap="postListResultMap">
         SELECT
         P.POST_ID,
         P.WRITER,
@@ -202,15 +226,12 @@
         </if>
     </select>
 
-
     <delete id="delete" parameterType="long">
         DELETE FROM POST WHERE POST_ID = #{postId}
     </delete>
-    
+
     <delete id="deleteById" parameterType="long">
         DELETE FROM POST WHERE POST_ID = #{postId}
     </delete>
-
-
 
 </mapper>
