@@ -2,13 +2,16 @@ package com.post.post.controller;
 
 import com.post.common.response.PageRequest;
 import com.post.common.response.PageResponse;
+import com.post.common.util.SavedFile;
 import com.post.post.dto.PostDto;
 import com.post.post.service.PostService;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @Controller
@@ -67,7 +70,7 @@ public class PostController {
         return "post/edit-post";
     }
 
-    // 🌟 2. 수정 내용 제출 처리 (POST)
+    // 🌟 수정 내용 제출 처리 (POST)
     @PostMapping("/edit-post")
     public String updatePostProcess(
             @RequestParam("postId") Long postId,
@@ -76,7 +79,9 @@ public class PostController {
             @RequestParam("content") String content,
             @RequestParam(value = "transportCost", defaultValue = "0") Long transportCost,
             @RequestParam(value = "foodCost", defaultValue = "0") Long foodCost,
-            @RequestParam(value = "otherCost", defaultValue = "0") Long otherCost
+            @RequestParam(value = "otherCost", defaultValue = "0") Long otherCost,
+            @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteImageIds,
+            @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames // 👈 반드시 String 리스트여야 합니다!
     ) {
         PostDto postDto = new PostDto();
         postDto.setPostId(postId);
@@ -87,8 +92,8 @@ public class PostController {
         postDto.setFoodCost(foodCost);
         postDto.setOtherCost(otherCost);
 
-        // 서비스 호출하여 데이터베이스 업데이트
-        postService.updateWithFiles(postDto, null, null);
+        // 서비스 호출
+        postService.updateWithFiles(postDto, deleteImageIds, savedFileNames);
 
         return "redirect:/detail?postId=" + postId;
     }

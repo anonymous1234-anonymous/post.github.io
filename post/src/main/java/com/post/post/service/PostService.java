@@ -158,12 +158,12 @@ public class PostService {
             }
         }
     }
-
     @Transactional
     public void updateWithFiles(PostDto postDto, List<Long> deleteImageIds, List<String> savedFileNames) {
         Long postId = postDto.getPostId();
         postMapper.update(postDto);
 
+        // 1. 삭제할 이미지가 있다면 삭제 처리
         if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
             for (Long uploadId : deleteImageIds) {
                 postMapper.deleteByPostIdAndUploadId(postId, uploadId);
@@ -171,6 +171,7 @@ public class PostService {
             }
         }
 
+        // 2. 새로 추가된 파일명 리스트가 있다면 DB 저장 처리 (청크 업로드로 이미 서버에 저장된 파일명 활용)
         if (savedFileNames != null && !savedFileNames.isEmpty()) {
             List<PostImageDto> existingImages = postMapper.findImagesByPostId(postId);
             int imageOrder = existingImages.size();

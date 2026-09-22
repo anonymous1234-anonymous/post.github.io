@@ -1,4 +1,4 @@
-package com.post.components.controller;
+package com.post.components;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -39,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
         mediaElement.style.height = "100%";
     }
 
+    // 메인 프리뷰 렌더링 함수
     function renderMainPreview(index) {
         if (selectedFiles.length === 0) {
             if (currentPreviewUrl) {
@@ -94,6 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // 썸네일 목록 렌더링 함수
     function renderThumbnails() {
         thumbnailList.innerHTML = "";
         selectedFiles.forEach((file, index) => {
@@ -151,6 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // 좌우 슬라이드 버튼 이벤트 연결
     if (prevBtn) {
         prevBtn.onclick = (e) => {
             e.preventDefault();
@@ -171,6 +174,25 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
+    // 키보드 방향키(←, →) 슬라이드 단축키 지원
+    document.addEventListener("keydown", (e) => {
+        if (selectedFiles.length <= 1) return;
+        if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+        if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            currentImageIndex = (currentImageIndex - 1 + selectedFiles.length) % selectedFiles.length;
+            renderMainPreview(currentImageIndex);
+            renderThumbnails();
+        } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            currentImageIndex = (currentImageIndex + 1) % selectedFiles.length;
+            renderMainPreview(currentImageIndex);
+            renderThumbnails();
+        }
+    });
+
+    // 파일 입력(Input Change) 이벤트
     imageInput.addEventListener("change", () => {
         const newFiles = Array.from(imageInput.files);
         imageInput.value = "";
@@ -198,18 +220,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const filesToAdd = validFiles.slice(0, remainingCount);
         if (filesToAdd.length > 0) {
             selectedFiles = [...selectedFiles, ...filesToAdd];
-            console.log("📂 [디버깅] 현재 누적 선택된 파일들:", selectedFiles);
             renderMainPreview(currentImageIndex);
             renderThumbnails();
         }
     });
 
+    // 폼 제출(Submit) 및 청크 업로드 처리
     if (form) {
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
-
-            const postIdInput = form.querySelector('input[name="postId"]');
-            const postId = postIdInput ? postIdInput.value : null;
 
             const submitBtn = form.querySelector("button[type='submit']");
             if (submitBtn) submitBtn.disabled = true;
@@ -217,19 +236,10 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 let savedFileNames = [];
 
-                console.log("🚀 [디버깅] 청크 업로드 루프 진입. 대상 파일 수:", selectedFiles.length);
-
-                // 기존 코드:
-// const fileUid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'file-' + Date.now();
-// ...
-// formData.append("fileUid", fileUid);
-
-// 🌟 수정된 올바른 코드 (uploadId로 변경):
                 for (const file of selectedFiles) {
                     if (typeof file === "string") continue;
 
                     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-                    // 업로드 세션을 식별하는 고유 ID 이름을 백엔드 DTO(ChunkDto)의 필드명인 uploadId와 일치시킴
                     const uploadId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'upload-' + Date.now();
                     let fileSavedName = null;
 
@@ -240,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         const formData = new FormData();
                         formData.append("file", chunk);
-                        formData.append("uploadId", uploadId); // 👈 'fileUid'에서 'uploadId'로 수정 완료!
+                        formData.append("uploadId", uploadId);
                         formData.append("originalName", file.name);
                         formData.append("chunkIndex", chunkIndex);
                         formData.append("totalChunks", totalChunks);
@@ -260,5 +270,24 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (fileSavedName) {
                         savedFileNames.push(fileSavedName);
                     }
+                }
+
+                // 업로드된 파일명들을 숨김 필드로 폼에 추가하여 서버 전송
+                savedFileNames.forEach(fileName => {
+                    const hiddenInput = document.createElement("input");
+                    hiddenInput.type = "hidden";
+                    hiddenInput.name = "savedFileNames";
+                    hiddenInput.value = fileName;
+                    form.appendChild(hiddenInput);
                 });
+
+                form.submit();
+
+            } catch (error) {
+                console.error("파일 업로드 중 에러 발생:", error);
+                alert("파일 업로드에 실패했습니다: " + error.message);
+                if (submitBtn) submitBtn.disabled = false;
             }
+        });
+    }
+});

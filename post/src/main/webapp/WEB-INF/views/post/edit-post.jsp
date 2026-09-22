@@ -57,6 +57,38 @@
           <div class="col-lg-6">
             <div class="zt-post-image-uploader" data-post-image-uploader>
 
+              <%-- 🌟 새로 선택한 파일 프리뷰 및 슬라이드 UI 영역 --%>
+              <div class="mb-4">
+                <label class="form-label fw-bold">새로 첨부할 파일 미리보기</label>
+                <div class="position-relative d-flex align-items-center justify-content-center border rounded bg-dark overflow-hidden" style="height: 250px;">
+
+                  <!-- 이전 슬라이드 버튼 -->
+                  <button type="button" id="post-prev-btn" class="btn btn-light btn-sm position-absolute start-0 ms-2" style="z-index: 10; display: none; opacity: 0.8;">
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+
+                  <!-- 메인 프리뷰 표시 영역 -->
+                  <div id="post-main-preview" class="text-white text-center"></div>
+
+                  <!-- 빈 상태 안내 메시지 -->
+                  <div id="post-image-empty" class="text-muted d-flex flex-column align-items-center justify-content-center" style="width: 100%; height: 100%;">
+                    <i class="bi bi-image fs-1 mb-1"></i>
+                    <small>선택된 파일이 없습니다.</small>
+                  </div>
+
+                  <!-- 다음 슬라이드 버튼 -->
+                  <button type="button" id="post-next-btn" class="btn btn-light btn-sm position-absolute end-0 me-2" style="z-index: 10; display: none; opacity: 0.8;">
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+
+                  <!-- 현재 인덱스 / 총 개수 카운트 -->
+                  <span id="post-image-count" class="position-absolute bottom-0 end-0 badge bg-secondary m-2" style="font-size: 11px;">0</span>
+                </div>
+
+                <!-- 썸네일 리스트 영역 -->
+                <div id="post-thumbnail-list" class="mt-2 overflow-auto py-1" style="white-space: nowrap;"></div>
+              </div>
+
               <%-- 기존 업로드된 파일 및 삭제 체크박스 영역 --%>
               <div class="mb-3">
                 <label class="form-label fw-bold">기존 첨부파일 (삭제할 항목을 체크하세요)</label>
@@ -67,8 +99,8 @@
                         <div class="border p-2 rounded text-center bg-light" style="width: 110px;">
                           <span class="d-block text-truncate small mb-1" style="max-width: 100px;"><c:out value="${image.originName}"/></span>
                           <div class="form-check d-flex justify-content-center align-items-center gap-1">
-                            <input class="form-check-input" type="checkbox" name="deleteImageIds" value="${image.imageId}" id="del-${image.imageId}">
-                            <label class="form-check-label small text-danger fw-bold" for="del-${image.imageId}">삭제</label>
+                            <input class="form-check-input" type="checkbox" name="deleteImageIds" value="${image.uploadId}" id="del-${image.uploadId}">
+                            <label class="form-check-label small text-danger fw-bold" for="del-${image.uploadId}">삭제</label>
                           </div>
                         </div>
                       </c:forEach>
