@@ -184,9 +184,83 @@ document.addEventListener("DOMContentLoaded", () => {
             renderThumbnails();
         }
     });
+// 🌟 폼 제출 시 선택된 파일들을 청크로 나누어 업로드하고 데이터 전송
+    const postForm = document.querySelector("#post-form");
+    if (postForm) {
+        postForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-    // 다른 파일(edit.js)에서 현재 선택된 파일 목록을 가져갈 수 있도록 전역 인터페이스 제공
-    window.postImageManager = {
-        getSelectedFiles: () => selectedFiles
-    };
-});
+            const submitBtn = postForm.querySelector("button[type='submit']") || postForm.querySelector("#submit-btn");
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+                const savedFileNames = [];
+                const CHUNK_SIZE = 1024 * 1024 * 2; // 2MB 단위 청크
+
+                // 1. 파일이 있는 경우 청크 업로드 진행
+                if (selectedFiles.length > 0) {
+                    for (const file of selectedFiles) {
+                        const uploadId = "upload_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
+                        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                        let finalFileName = null;
+
+                        for (let i = 0; i < totalChunks; i++) {
+                            const start = i * CHUNK_SIZE;
+                            const end = Math.min(start + CHUNK_SIZE, file.size);
+                            const chunk = file.slice(start, end);
+
+                            const formData = new FormData();
+                            formData.append("file", chunk);
+                            formData.append("uploadId", uploadId);
+                            formData.append("chunkIndex", i);
+                            formData.append("totalChunks", totalChunks);
+                            formData.append("originalName", file.name);
+
+                            const response = await fetch(`${window.location.origin}/api/posts/upload-chunk`, {
+                                method: "POST",
+                                body: formData
+                            });
+
+                            const result = await response.json();
+                            if (!result.success) {
+                                throw new Error(result.message || "파일 업로드 중 오류가 발생했습니다.");
+                            }
+
+                            if (result.data.completed) {
+                                finalFileName = result.data.savedFileName;
+                            }
+                        }
+
+                        if (finalFileName) {
+                            savedFileNames.push(finalFileName);
+                        }
+                    }
+                }
+
+                // 2. 폼 데이터를 기반으로 FormData 생성
+                const finalFormData = new FormData(postForm);
+
+                // 업로드된 파일명 JSON 문자열을 FormData에 직접 추가
+                finalFormData.set("savedFileNamesJson", JSON.stringify(savedFileNames));
+
+                // 3. fetch를 통해 /api/posts로 최종 데이터 전송
+                const finalResponse = await fetch(postForm.action, {
+                    method: "POST",
+                    body: finalFormData
+                });
+
+                const finalResult = await finalResponse.json();
+
+                if (finalResult.success) {
+                    window.location.href = `${window.location.origin}/main-post`;
+                } else {
+                    throw new Error(finalResult.message || "게시글 등록에 실패했습니다.");
+                }
+
+            } catch (error) {
+                console.error("등록 에러:", error);
+                alert("오류 발생: " + error.message);
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }});

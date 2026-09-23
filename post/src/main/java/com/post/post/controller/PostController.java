@@ -117,15 +117,22 @@ public class PostController {
     @PostMapping("/new-post")
     public String createPostProcess(
             @RequestParam("title") String title,
-            // ... 중간 생략 ...
-            @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
+            @RequestParam(value = "place", required = false) String place,
+            @RequestParam("content") String content,
+            @RequestParam(value = "transportCost", defaultValue = "0") Long transportCost,
+            @RequestParam(value = "foodCost", defaultValue = "0") Long foodCost,
+            @RequestParam(value = "otherCost", defaultValue = "0") Long otherCost,
+            @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames // 👈 이 이름으로 정확히 매핑됩니다!
     ) {
-        // 🌟 이 로그가 찍히는지, 리스트에 파일명이 들어있는지 확인!
         System.out.println("=== [DEBUG] 컨트롤러가 받은 savedFileNames: " + savedFileNames);
 
         PostDto postDto = new PostDto();
         postDto.setTitle(title);
-        // ... 세팅 ...
+        postDto.setPlace(place);
+        postDto.setContent(content);
+        postDto.setTransportCost(transportCost);
+        postDto.setFoodCost(foodCost);
+        postDto.setOtherCost(otherCost);
 
         postService.saveWithFiles(postDto, savedFileNames);
 

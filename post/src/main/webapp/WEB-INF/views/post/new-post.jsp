@@ -47,7 +47,7 @@
 
         <form class="row g-4"
               id="post-form"
-              action="${pageContext.request.contextPath}/new-post"
+              action="${pageContext.request.contextPath}/api/posts"
               method="post"
               enctype="multipart/form-data">
 
