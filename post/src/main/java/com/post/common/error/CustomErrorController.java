@@ -1,4 +1,4 @@
-package com.post.error;
+package com.post.common.error;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;

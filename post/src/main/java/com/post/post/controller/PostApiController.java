@@ -58,8 +58,7 @@ public class PostApiController {
     }
 
     /**
-     * 2. 대용량 파일 청크(조각) 업로드 및 마지막 청크 시 자동 병합 API
-     * POST /api/posts/upload-chunk
+     * 2. 대용량 파일 청크 업로드 API
      */
     @PostMapping("/upload-chunk")
     public ResponseEntity<Map<String, Object>> uploadChunk(ChunkDto dto) {
@@ -71,23 +70,22 @@ public class PostApiController {
                 tempDirFile.mkdirs();
             }
 
-            // 1. 현재 청크 조각을 임시 파일로 저장 (예: chunk_0, chunk_1 ...)
+            // 1. 현재 청크 조각 임시 저장
             File chunkFile = new File(tempDirFile, "chunk_" + dto.getChunkIndex());
             dto.getFile().transferTo(chunkFile);
 
             boolean completed = false;
             String savedFileName = null;
 
-            // 2. 마지막 청크인지 검사 (모든 조각이 다 도착했는지 확인)
+            // 2. 마지막 청크인지 검사
             File[] chunks = tempDirFile.listFiles((dir, name) -> name.startsWith("chunk_"));
             if (chunks != null && chunks.length == dto.getTotalChunks()) {
 
-                // 3. 🌟 최종 파일 병합 작업 수행
+                // 3. 최종 파일 병합 수행
                 String ext = dto.getOriginalName().substring(dto.getOriginalName().lastIndexOf("."));
                 savedFileName = UUID.randomUUID().toString() + ext;
                 File targetFile = new File(UPLOAD_DIR + savedFileName);
 
-                // 최종 저장 디렉토리가 없으면 생성
                 if (!targetFile.getParentFile().exists()) {
                     targetFile.getParentFile().mkdirs();
                 }
@@ -99,7 +97,7 @@ public class PostApiController {
                     }
                 }
 
-                // 4. 🌟 병합 완료 후 낱개로 쪼개져 있던 임시 청크 파일들 및 임시 폴더 자동 제거 (Clean-up)
+                // 4. 임시 청크 파일 및 폴더 정리
                 for (int i = 0; i < dto.getTotalChunks(); i++) {
                     File cFile = new File(tempDirFile, "chunk_" + i);
                     if (cFile.exists()) {
@@ -107,13 +105,12 @@ public class PostApiController {
                     }
                 }
                 if (tempDirFile.exists()) {
-                    tempDirFile.delete(); // 텅 빈 임시 디렉토리 삭제
+                    tempDirFile.delete();
                 }
 
                 completed = true;
             }
 
-            // 프론트엔드로 결과 반환 (completed가 true일 때만 savedFileName 전달)
             Map<String, Object> data = new HashMap<>();
             data.put("completed", completed);
             data.put("savedFileName", savedFileName);
@@ -131,10 +128,9 @@ public class PostApiController {
     }
 
     /**
-     * 3. 최종 글 등록 API (파일 이름 목록 포함)
-     * POST /api/posts
+     * 3. 게시글 신규 등록 API (multipart/form-data 및 폼 전송 모두 허용)
      */
-    @PostMapping
+    @PostMapping(consumes = {org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE, org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED_VALUE})
     public ResponseEntity<?> createPost(
             @RequestParam("title") String title,
             @RequestParam(value = "place", required = false) String place,
@@ -142,9 +138,29 @@ public class PostApiController {
             @RequestParam(value = "transportCost", defaultValue = "0") Long transportCost,
             @RequestParam(value = "foodCost", defaultValue = "0") Long foodCost,
             @RequestParam(value = "otherCost", defaultValue = "0") Long otherCost,
-            @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
+            @RequestParam(value = "savedFileNamesJson", required = false) String savedFileNamesJson,
+            @RequestParam(value = "savedFileNames", required = false) String savedFileNamesAlt
     ) {
         try {
+            String jsonStr = (savedFileNamesJson != null && !savedFileNamesJson.isBlank()) ? savedFileNamesJson : savedFileNamesAlt;
+
+            List<String> savedFileNames = new java.util.ArrayList<>();
+            if (jsonStr != null && !jsonStr.isBlank() && !jsonStr.equals("[]")) {
+                String cleaned = jsonStr.trim();
+                if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+                    cleaned = cleaned.substring(1, cleaned.length() - 1);
+                }
+                if (!cleaned.isBlank()) {
+                    String[] parts = cleaned.split(",");
+                    for (String part : parts) {
+                        String fileName = part.trim().replaceAll("^\"|\"$", "");
+                        if (!fileName.isEmpty()) {
+                            savedFileNames.add(fileName);
+                        }
+                    }
+                }
+            }
+
             PostDto postDto = new PostDto();
             postDto.setTitle(title);
             postDto.setPlace(place);
@@ -152,8 +168,10 @@ public class PostApiController {
             postDto.setTransportCost(transportCost);
             postDto.setFoodCost(foodCost);
             postDto.setOtherCost(otherCost);
+            postDto.setWriter("익명");
 
             postService.saveWithFiles(postDto, savedFileNames);
+
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             e.printStackTrace();
@@ -162,10 +180,9 @@ public class PostApiController {
     }
 
     /**
-     * 4. 게시글 수정 API (경로에 /update가 없거나 있는 경우 모두 대응)
-     * POST /api/posts/{postId} 또는 /api/posts/{postId}/update
+     * 4. 게시글 수정 API (multipart/form-data 및 폼 전송 모두 허용)
      */
-    @PostMapping(value = {"/{postId}", "/{postId}/update"})
+    @PostMapping(value = {"/{postId}", "/{postId}/update"}, consumes = {org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE, org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED_VALUE})
     public ApiResponse<Void> updatePost(
             @PathVariable Long postId,
             @RequestParam("title") String title,
@@ -175,8 +192,29 @@ public class PostApiController {
             @RequestParam(value = "foodCost", defaultValue = "0") Long foodCost,
             @RequestParam(value = "otherCost", defaultValue = "0") Long otherCost,
             @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteImageIds,
-            @RequestParam(value = "savedFileNames", required = false) List<String> savedFileNames
+            @RequestParam(value = "savedFileNamesJson", required = false) String savedFileNamesJson,
+            @RequestParam(value = "savedFileNames", required = false) String savedFileNamesAlt
     ) throws IOException {
+
+        String jsonStr = (savedFileNamesJson != null && !savedFileNamesJson.isBlank()) ? savedFileNamesJson : savedFileNamesAlt;
+
+        List<String> savedFileNames = new java.util.ArrayList<>();
+        if (jsonStr != null && !jsonStr.isBlank() && !jsonStr.equals("[]")) {
+            String cleaned = jsonStr.trim();
+            if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+                cleaned = cleaned.substring(1, cleaned.length() - 1);
+            }
+            if (!cleaned.isBlank()) {
+                String[] parts = cleaned.split(",");
+                for (String part : parts) {
+                    String fileName = part.trim().replaceAll("^\"|\"$", "");
+                    if (!fileName.isEmpty()) {
+                        savedFileNames.add(fileName);
+                    }
+                }
+            }
+        }
+
         PostDto postDto = new PostDto();
         postDto.setPostId(postId);
         postDto.setTitle(title);
@@ -189,10 +227,8 @@ public class PostApiController {
         postService.updateWithFiles(postDto, deleteImageIds, savedFileNames);
         return ApiResponse.success(null);
     }
-
     /**
      * 5. 게시글 삭제 API
-     * DELETE /api/posts/{postId}
      */
     @DeleteMapping("/{postId}")
     public ApiResponse<Void> deletePost(@PathVariable Long postId) {

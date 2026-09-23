@@ -1,4 +1,4 @@
-package com.post.main;
+package com.post.main.controller;
 
 import com.post.post.service.PostService;
 import org.springframework.stereotype.Controller;

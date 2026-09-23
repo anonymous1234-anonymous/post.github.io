@@ -26,8 +26,11 @@ function escapeHtml(value) {
 
 // ==========================================
 // 상세 페이지 이미지 슬라이더 이동 전역 함수
+// 'var'를 사용하여 이미 선언된 경우 중복 에러 방지
 // ==========================================
-let currentSlideIndex = 0;
+if (typeof currentSlideIndex === 'undefined') {
+  var currentSlideIndex = 0;
+}
 
 function moveSlide(direction) {
   const slides = document.querySelectorAll('.slide-item');

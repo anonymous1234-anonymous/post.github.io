@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// 3. [청크 단위 파일 업로드 및 병합 헬퍼 함수]
+// 3. [청크 단위 파일 업로드 및 병합 헬퍼 함수 - 수정본]
 // ==========================================
 async function uploadFileWithChunkAndMerge(file) {
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB 단위 설정
@@ -167,22 +167,31 @@ async function uploadFileWithChunkAndMerge(file) {
                 throw new Error(result.message || "청크 업로드 실패");
             }
 
-            // 서버가 병합 완료 후 반환하는 파일명 구조 대응 방어 코드
-            if (result.data) {
-                if (typeof result.data === 'string') {
-                    finalSavedFileName = result.data;
-                } else if (result.data.savedFileName) {
-                    finalSavedFileName = result.data.savedFileName;
+            // [수정 포인트] 마지막 청크이거나, 서버가 응답 데이터에 파일명을 담아준 경우에만 저장
+            // 백엔드 구현에 따라 result 자체에 값이 올 수도 있으므로 안전하게 여러 경로를 체크합니다.
+            const targetData = result.data !== undefined ? result.data : result;
+
+            if (targetData) {
+                if (typeof targetData === 'string') {
+                    finalSavedFileName = targetData;
+                } else if (targetData.savedFileName) {
+                    finalSavedFileName = targetData.savedFileName;
                 }
-                if (finalSavedFileName) {
-                    console.log("[파일 병합 완료 확인]:", finalSavedFileName);
-                }
+            }
+
+            // 만약 서버 응답 객체에 직접 속성이 있다면 추가 확인 (예: result.savedFileName)
+            if (!finalSavedFileName && result.savedFileName) {
+                finalSavedFileName = result.savedFileName;
             }
         }
 
+        // 루프가 끝났는데도 최종 파일명이 없다면 서버 응답 구조를 개발자 도구 콘솔로 확인해봐야 합니다.
         if (!finalSavedFileName) {
-            console.error("파일 병합은 되었으나 최종 파일명이 반환되지 않았습니다.");
+            console.error("파일 병합은 되었으나 최종 파일명이 반환되지 않았습니다. 서버 응답을 확인하세요.");
+            throw new Error("최종 파일명을 가져오지 못했습니다.");
         }
+
+        console.log("[파일 병합 최종 완료]:", finalSavedFileName);
 
         return {
             savedFileName: finalSavedFileName,
@@ -191,6 +200,6 @@ async function uploadFileWithChunkAndMerge(file) {
 
     } catch (error) {
         console.error("[업로드 실패]:", error);
-        throw error; // 상단 catch 블록에서 캐치하도록 던짐
+        throw error;
     }
 }

@@ -1,19 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-
-    // ==========================================
-    // [파트 1] 상세 보기 페이지 기능 (미디어 렌더링)
-    // ==========================================
-    const mediaContainer = document.querySelector("#post-media-container");
-    if (mediaContainer) {
-        // ... (기존 상세 보기 코드 유지)
-    }
-
-    // ==========================================
-    // [파트 2] 글 작성/수정 페이지 기능
-    // ==========================================
     const maxFileCount = 10;
     const uploader = document.querySelector("[data-post-image-uploader]");
-    const imageInput = document.querySelector("#new-post-image")
+    const imageInput = document.querySelector("#new-post-image");
     const emptyMessage = document.querySelector("#post-image-empty");
     const mediaElement = document.querySelector("#dynamic-media-view");
     const thumbnailList = document.querySelector("#post-thumbnail-list");
@@ -21,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const prevBtn = document.querySelector("#post-prev-btn");
     const nextBtn = document.querySelector("#post-next-btn");
-    const form = document.querySelector("form");
 
     if (!uploader || !imageInput || !emptyMessage || !mediaElement || !thumbnailList || !imageCount) {
         return;
@@ -32,7 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentPreviewUrl = null;
 
     function renderMainPreview(index) {
-        // 1. 기존 미디어 영역 내부를 완전히 비웁니다.
         mediaElement.innerHTML = "";
 
         if (selectedFiles.length === 0) {
@@ -41,7 +27,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentPreviewUrl = null;
             }
             emptyMessage.style.display = "flex";
-            if (typeof mainPreview !== 'undefined' && mainPreview) mainPreview.hidden = true;
+            const mainPreviewEl = document.querySelector("#post-main-preview");
+            if (mainPreviewEl) mainPreviewEl.hidden = false;
+
             mediaElement.style.display = "none";
             if (prevBtn) prevBtn.style.display = "none";
             if (nextBtn) nextBtn.style.display = "none";
@@ -61,14 +49,12 @@ document.addEventListener("DOMContentLoaded", () => {
         currentPreviewUrl = URL.createObjectURL(file);
         emptyMessage.style.display = "none";
         mediaElement.style.display = "flex";
-        if (typeof mainPreview !== 'undefined' && mainPreview) mainPreview.hidden = true;
 
         const fileNameLower = file.name.toLowerCase();
         const isVideo = file.type.startsWith("video/") || fileNameLower.endsWith(".webm") || fileNameLower.endsWith(".mp4") || fileNameLower.endsWith(".mov");
-        const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif");
+        const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif") || fileNameLower.endsWith(".webp");
         const isAudio = file.type.startsWith("audio/") || fileNameLower.endsWith(".mp3") || fileNameLower.endsWith(".wav");
 
-        // 2. 파일 타입별 분기 처리
         if (isImage) {
             mediaElement.innerHTML = `<img src="${currentPreviewUrl}" alt="${file.name}" style="max-width: 100%; max-height: 250px; width: auto; height: auto; object-fit: contain; border-radius: 8px;">`;
         } else if (isVideo) {
@@ -76,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="text-center p-4">
                     <i class="bi bi-file-earmark-play-fill display-4 mb-2 text-danger"></i>
                     <p class="mb-1">${file.name}</p>
-                    <small class="text-muted">동영상 파일이 선택되었습니다. (등록 시 재생됩니다)</small>
+                    <small class="text-muted">동영상 파일이 선택되었습니다.</small>
                 </div>
             `;
         } else if (isAudio) {
@@ -84,7 +70,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="text-center p-4">
                     <i class="bi bi-file-earmark-music display-4 mb-2 text-primary"></i>
                     <p class="mb-1">${file.name}</p>
-                    <small class="text-muted">오디오 파일이 선택되었습니다.</small>
                     <audio src="${currentPreviewUrl}" controls class="w-100 mt-2"></audio>
                 </div>
             `;
@@ -105,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
             prevBtn.style.display = hasMultiple ? "block" : "none";
             nextBtn.style.display = hasMultiple ? "block" : "none";
         }
-    } // 👈 빠져있던 renderMainPreview 닫는 중괄호 추가 완료!
+    }
 
     function renderThumbnails() {
         thumbnailList.innerHTML = "";
@@ -123,13 +108,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const thumbnailUrl = URL.createObjectURL(file);
             const fileNameLower = file.name.toLowerCase();
-            const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif");
+            const isImage = file.type.startsWith("image/") || fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg") || fileNameLower.endsWith(".png") || fileNameLower.endsWith(".gif") || fileNameLower.endsWith(".webp");
 
             if (isImage) {
                 thumbContent.innerHTML = `<img src="${thumbnailUrl}" alt="${file.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
             } else {
                 thumbContent.innerHTML = `<i class="bi bi-file-earmark-fill text-dark" style="font-size: 1.5rem;"></i>`;
-                URL.revokeObjectURL(thumbnailUrl);
             }
 
             button.appendChild(thumbContent);
@@ -188,7 +172,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (validFiles.length === 0) return;
 
         const remainingCount = maxFileCount - selectedFiles.length;
-        if (validFiles.length > remainingCount) alert(`파일은 최대 ${maxFileCount}개까지만 선택할 수 있습니다.`);
+        if (validFiles.length > remainingCount) {
+            alert(`파일은 최대 ${maxFileCount}개까지만 선택할 수 있습니다.`);
+        }
 
         const filesToAdd = validFiles.slice(0, remainingCount);
         if (filesToAdd.length > 0) {
@@ -199,75 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    if (form) {
-        form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const submitBtn = form.querySelector("button[type='submit']");
-            if (submitBtn) submitBtn.disabled = true;
-
-            try {
-                let savedFileNames = [];
-
-                for (const file of selectedFiles) {
-                    if (typeof file === "string") continue;
-
-                    const CHUNK_SIZE = 5 * 1024 * 1024;
-                    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-                    const fileUid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'file-' + Date.now();
-                    let fileSavedName = null;
-
-                    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-                        const start = chunkIndex * CHUNK_SIZE;
-                        const end = Math.min(start + CHUNK_SIZE, file.size);
-                        const chunk = file.slice(start, end);
-
-                        const formData = new FormData();
-                        formData.append("file", chunk);
-                        formData.append("fileUid", fileUid);
-                        formData.append("originalName", file.name);
-                        formData.append("chunkIndex", chunkIndex);
-                        formData.append("totalChunks", totalChunks);
-
-                        const chunkRes = await fetch('/api/posts/upload-chunk', {method: 'POST', body: formData});
-                        const chunkResult = await chunkRes.json();
-                        if (!chunkResult.success) throw new Error(chunkResult.message || "청크 업로드 실패");
-
-                        if (chunkResult.data && chunkResult.data.completed) {
-                            fileSavedName = chunkResult.data.savedFileName;
-                        }
-                    }
-                    if (fileSavedName) savedFileNames.push(fileSavedName);
-                }
-
-                const finalPayload = new FormData();
-                const postIdInput = form.querySelector('input[name="postId"]');
-                const postId = postIdInput ? postIdInput.value : null;
-
-                finalPayload.append("title", form.querySelector('#post-title')?.value || "");
-                finalPayload.append("place", form.querySelector('#post-place')?.value || "");
-                finalPayload.append("content", form.querySelector('#post-content')?.value || "");
-                finalPayload.append("transportCost", form.querySelector('#transport-cost')?.value || 0);
-                finalPayload.append("foodCost", form.querySelector('#food-cost')?.value || 0);
-                finalPayload.append("otherCost", form.querySelector('#other-cost')?.value || 0);
-
-                savedFileNames.forEach(name => finalPayload.append("savedFileNames", name));
-
-                const url = postId ? `/api/posts/${postId}/update` : '/api/posts';
-                const finalRes = await fetch(url, { method: 'POST', body: finalPayload });
-                const finalResult = await finalRes.json();
-
-                if (finalRes.ok && finalResult.success) {
-                    alert(postId ? "게시글이 성공적으로 수정되었습니다!" : "게시글이 성공적으로 등록되었습니다!");
-                    location.href = postId ? `/detail?postId=${postId}` : "/main-post";
-                } else {
-                    alert("처리에 실패했습니다: " + (finalResult.message || ""));
-                    if (submitBtn) submitBtn.disabled = false;
-                }
-            } catch (error) {
-                console.error("업로드 중 오류 발생:", error);
-                alert("오류가 발생했습니다: " + error.message);
-                if (submitBtn) submitBtn.disabled = false;
-            }
-        });
-    }
+    // 다른 파일(edit.js)에서 현재 선택된 파일 목록을 가져갈 수 있도록 전역 인터페이스 제공
+    window.postImageManager = {
+        getSelectedFiles: () => selectedFiles
+    };
 });

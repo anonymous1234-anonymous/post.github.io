@@ -68,8 +68,8 @@
 
                                     <c:choose>
                                         <c:when test="${not empty post.thumbnailPath}">
-                                            <%-- 🌟 절대 경로(/uploads/...)로 수정하여 404 에러 방지 --%>
-                                            <img src="/uploads/${post.thumbnailPath}" class="card-img-top" alt="썸네일" style="height: 200px; object-fit: cover;">
+                                            <%-- 🌟 수정: ${pageContext.request.contextPath} ti inayon tapno umiso ti pannakaidalan ti URL --%>
+                                            <img src="${pageContext.request.contextPath}/uploads/${post.thumbnailPath}" class="card-img-top" alt="썸네일" style="height: 200px; object-fit: cover;">
                                         </c:when>
                                         <c:otherwise>
                                             <div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 200px;">
@@ -113,7 +113,6 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="${pageContext.request.contextPath}/assets/js/common.js"></script>
 </body>
 </html>
